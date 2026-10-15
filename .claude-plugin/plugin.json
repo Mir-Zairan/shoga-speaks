@@ -1,0 +1,8 @@
+{
+  "name": "shoga-speaks",
+  "displayName": "Shoga-Speaks",
+  "version": "0.1.0",
+  "description": "Claude explains it your way: in your language and script, for your role, short and simple. Covers chat, PR comments and artifacts.",
+  "author": { "name": "Zairan Mir" },
+  "keywords": ["language", "translation", "roman-urdu", "hindi", "multilingual", "roles", "accessibility", "pr-review"]
+}

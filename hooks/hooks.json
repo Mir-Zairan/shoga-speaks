@@ -1,0 +1,19 @@
+{
+  "description": "Shoga-Speaks: shapes every reply by the user's language, script, roles and length",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/shoga.mjs\" session-start", "timeout": 10 }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/shoga.mjs\" prompt", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}

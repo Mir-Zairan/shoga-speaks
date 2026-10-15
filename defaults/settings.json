@@ -1,0 +1,22 @@
+{
+  "enabled": true,
+  "language": "english",
+  "script": "default",
+  "github_script": "default",
+  "roles": ["dev"],
+  "length": "short",
+  "keep_english_terms": true,
+  "cli_open": "translated",
+  "github_open": "english",
+  "apply_to": {
+    "chat": true,
+    "pr_comments": true,
+    "artifacts": true,
+    "commit_messages": false,
+    "code_comments": false
+  },
+  "artifacts": {
+    "switch_languages": ["mine", "english"],
+    "role_switch": false
+  }
+}

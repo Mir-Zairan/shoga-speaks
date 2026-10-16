@@ -105,57 +105,103 @@ def mascot(talk=True):
 
 
 # ---------------------------------------------------------------- speech bubbles
+# One message per role, said in one language at a time: Roman-Urdu, then Dutch, then English.
 
-BUBBLES = [
-    ("Dev", "#22A35A", "Roman-Urdu", "N+1 query hai: ek hi query mein lao."),
-    ("QA", "#2F7FE0", "Nederlands", "Test met een klant met 500+ orders."),
-    ("PO", "#E08A12", "English", "Hold the release: two risks, small fix."),
+LANGS = ["Roman-Urdu", "Nederlands", "English"]
+ROLES = [
+    ("Dev", "#22A35A", ["N+1 query hai: sab ek query mein lao.", "N+1-query: haal alles in één query op.", "N+1 query: load it all in one query."]),
+    ("QA", "#2F7FE0", ["500+ orders wala customer test karo.", "Test met een klant met 500+ orders.", "Test with a customer with 500+ orders."]),
+    ("PO", "#E08A12", ["Abhi release mat karo: do risk hain.", "Nog niet releasen: twee risico's.", "Don't release yet: two risks."]),
 ]
 
+T = 14          # loop length, seconds
+POP = [0.7, 1.3, 1.9]          # bubbles spring out (Roman-Urdu)
+SWITCH = [5.4, 9.0]            # flip to Dutch, then English
+OUT_AT = 12.6                  # bubbles leave
+STAGGER = .14
 
-def bubble(i, x, y, w=500, h=96):
-    role, color, lang, text = BUBBLES[i]
+
+def pct(t):
+    return f(max(0, min(t, T)) / T * 100) + "%"
+
+
+def bubble(i, x, y, w=480, h=88):
+    role, color, texts = ROLES[i]
     cw = 24 + len(role) * 12
+    lines = "".join(
+        f'<text class="say t{i}{k}" x="{x + 26 + cw}" y="{y + h / 2 + 8}" style="font: 700 21px/1 {SANS}; letter-spacing: -.2px">{t}</text>'
+        for k, t in enumerate(texts))
     return f'''<g class="bub b{i}">
 <g class="bubIn">
 <path d="M{x + 22} {y} h{w - 44} a22 22 0 0 1 22 22 v{h - 44} a22 22 0 0 1 -22 22 h{-(w - 44)} a22 22 0 0 1 -22 -22 v{-(h - 66)} l-18 -6 l18 -10 v-6 a22 22 0 0 1 22 -22 z"
  class="bubFill" stroke="#15301F" stroke-width="3.5" stroke-linejoin="round"/>
-<rect x="{x + 22}" y="{y + 18}" width="{cw}" height="26" rx="13" fill="{color}"/>
-<text x="{x + 22 + cw / 2}" y="{y + 36}" text-anchor="middle" style="font: 700 14px/1 {SANS}; fill: #fff">{role}</text>
-<text x="{x + 34 + cw}" y="{y + 36}" style="font: 600 14px/1 {SANS}; letter-spacing: .3px" class="lang">{lang}</text>
-<text x="{x + 22}" y="{y + 74}" style="font: 700 22px/1 {SANS}; letter-spacing: -.2px" class="say">{text}</text>
+<rect x="{x + 16}" y="{y + h / 2 - 14}" width="{cw}" height="28" rx="14" fill="{color}"/>
+<text x="{x + 16 + cw / 2}" y="{y + h / 2 + 5}" text-anchor="middle" style="font: 800 14px/1 {SANS}; fill: #fff">{role}</text>
+{lines}
 </g></g>'''
 
 
-T = 12  # loop length, seconds
-POP = [0.7, 1.35, 2.0]
-
-
-def pct(t):
-    return f(t / T * 100) + "%"
+def tabs(x, y):
+    out, cx = [], x
+    for k, name in enumerate(LANGS):
+        w = 30 + len(name) * 9.4
+        out.append(f'<g class="tab tab{k}" transform="translate({f(cx)} {y})"><rect width="{f(w)}" height="32" rx="16"/>'
+                   f'<text x="{f(w / 2)}" y="21" text-anchor="middle" style="font: 700 15px/1 {SANS}">{name}</text>'
+                   f'<text class="on" x="{f(w / 2)}" y="21" text-anchor="middle" style="font: 700 15px/1 {SANS}">{name}</text></g>')
+        cx += w + 10
+    return "\n".join(out)
 
 
 def css():
-    bub = []
+    starts = [0] + SWITCH
+    ends = SWITCH + [OUT_AT + .4]
+    rules = []
+    # bubbles spring out of the beak, then leave together
     for i, t in enumerate(POP):
-        bub.append(
-            f"@keyframes pop{i} {{ 0%, {pct(t)} {{ opacity: 0; transform: translate(-150px, {f(110 - i * 105)}px) scale(.2) rotate(-8deg); }} "
+        rules.append(
+            f"@keyframes pop{i} {{ 0%, {pct(t)} {{ opacity: 0; transform: translate(-150px, {f(100 - i * 100)}px) scale(.2) rotate(-8deg); }} "
             f"{pct(t + .28)} {{ opacity: 1; transform: translate(6px, 0) scale(1.06) rotate(1deg); }} "
             f"{pct(t + .42)} {{ transform: translate(-2px, 0) scale(.98) rotate(0deg); }} "
-            f"{pct(t + .55)}, {pct(9.6 + i * .08)} {{ opacity: 1; transform: none; }} "
-            f"{pct(9.95 + i * .08)}, 100% {{ opacity: 0; transform: translate(-40px, 0) scale(.6); }} }}\n"
+            f"{pct(t + .55)}, {pct(OUT_AT + i * .08)} {{ opacity: 1; transform: none; }} "
+            f"{pct(OUT_AT + .35 + i * .08)}, 100% {{ opacity: 0; transform: translate(-40px, 0) scale(.6); }} }}\n"
             f".b{i} {{ animation: pop{i} {T}s infinite; }}")
-    jaw = " ".join(f"{pct(t - .05)} {{ transform: rotate(0deg); }} {pct(t + .08)} {{ transform: rotate(18deg); }} {pct(t + .3)} {{ transform: rotate(0deg); }}" for t in POP)
-    talk = " ".join(f"{pct(t)} {{ opacity: 0; transform: scale(.6); }} {pct(t + .1)} {{ opacity: 1; transform: scale(1); }} {pct(t + .35)} {{ opacity: 0; transform: scale(1.15); }}" for t in POP)
+    # each line flips in when its language starts and out when the next one comes
+    for i in range(3):
+        for k in range(3):
+            s0, e0 = starts[k] + i * STAGGER, ends[k] + i * STAGGER
+            if k == 0:
+                frames = f"0%, {pct(e0 - .01)} {{ opacity: 1; transform: none; }} {pct(e0 + .14)}, 100% {{ opacity: 0; transform: scaleY(.1); }}"
+            else:
+                frames = (f"0%, {pct(s0 + .12)} {{ opacity: 0; transform: scaleY(.1); }} {pct(s0 + .3)} {{ opacity: 1; transform: scaleY(1.08); }} "
+                          f"{pct(s0 + .4)} {{ transform: none; }} {pct(e0 - .01) if k < 2 else pct(T)} {{ opacity: 1; transform: none; }} "
+                          + (f"{pct(e0 + .14)}, 100% {{ opacity: 0; transform: scaleY(.1); }}" if k < 2 else ""))
+            rules.append(f"@keyframes l{i}{k} {{ {frames} }} .t{i}{k} {{ animation: l{i}{k} {T}s infinite; }}")
+    # language tabs light up in turn
+    for k in range(3):
+        s0, e0 = starts[k], ends[k]
+        rules.append(f"@keyframes tab{k} {{ 0%, {pct(s0)} {{ opacity: .45; }} {pct(s0 + .15)}, {pct(e0)} {{ opacity: 1; }} {pct(e0 + .15)}, 100% {{ opacity: .45; }} }}"
+                     f" .tab{k} {{ animation: tab{k} {T}s infinite; }}"
+                     f" @keyframes tabf{k} {{ 0%, {pct(s0)} {{ fill-opacity: 0; }} {pct(s0 + .15)}, {pct(e0)} {{ fill-opacity: 1; }} {pct(e0 + .15)}, 100% {{ fill-opacity: 0; }} }}"
+                     f" .tab{k} rect {{ animation: tabf{k} {T}s infinite; }}"
+                     f" @keyframes tabo{k} {{ 0%, {pct(s0)} {{ opacity: 0; }} {pct(s0 + .15)}, {pct(e0)} {{ opacity: 1; }} {pct(e0 + .15)}, 100% {{ opacity: 0; }} }}"
+                     f" .tab{k} .on {{ animation: tabo{k} {T}s infinite; }}")
+    talks = POP + SWITCH
+    jaw = " ".join(f"{pct(t - .05)} {{ transform: rotate(0deg); }} {pct(t + .08)} {{ transform: rotate(18deg); }} {pct(t + .3)} {{ transform: rotate(0deg); }}" for t in talks)
+    talk = " ".join(f"{pct(t)} {{ opacity: 0; transform: scale(.6); }} {pct(t + .1)} {{ opacity: 1; transform: scale(1); }} {pct(t + .35)} {{ opacity: 0; transform: scale(1.15); }}" for t in talks)
+    nod = " ".join(f"{pct(t - .1)} {{ transform: none; }} {pct(t + .1)} {{ transform: rotate(3deg) translateX(4px); }} {pct(t + .4)} {{ transform: none; }}" for t in SWITCH)
     return f"""
 .bg {{ fill: #EAF8EF; }} .spot {{ fill: #D2F1DF; }} .word {{ fill: #15301F; }} .tag {{ fill: #4B6B5B; }}
-.bubFill {{ fill: #FFFFFF; }} .say {{ fill: #15301F; }} .lang {{ fill: #5E7A6C; }} .dot {{ fill: #15301F; opacity: .08; }}
+.bubFill {{ fill: #FFFFFF; }} .say {{ fill: #15301F; }} .dot {{ fill: #15301F; opacity: .08; }}
+.tab rect {{ fill: #5BD46E; stroke: #15301F; stroke-width: 2; }} .tab text {{ fill: #15301F; }} .tab .on {{ fill: #0E1A15; opacity: 0; }}
 @media (prefers-color-scheme: dark) {{
   .bg {{ fill: #0E1A15; }} .spot {{ fill: #15291F; }} .word {{ fill: #F1F7F3; }} .tag {{ fill: #9BB8A9; }}
   .bubFill {{ fill: #F7FBF8; }} .dot {{ fill: #fff; opacity: .06; }}
+  .tab rect {{ fill: #5BD46E; stroke: #5BD46E; }} .tab text {{ fill: #F1F7F3; }} .tab .on {{ fill: #0E1A15; }}
 }}
+.tab text {{ mix-blend-mode: normal; }}
 .bub {{ transform-box: fill-box; transform-origin: 0% 60%; opacity: 0; }}
-{chr(10).join(bub)}
+.say {{ transform-box: fill-box; transform-origin: 50% 60%; }}
+{chr(10).join(rules)}
 .bubIn {{ animation: drift 6s ease-in-out infinite; }} .b1 .bubIn {{ animation-delay: -2s; }} .b2 .bubIn {{ animation-delay: -4s; }}
 @keyframes drift {{ 0%, 100% {{ transform: translateY(0); }} 50% {{ transform: translateY(-3px); }} }}
 
@@ -163,12 +209,14 @@ def css():
 @keyframes jaw {{ 0% {{ transform: rotate(0deg); }} {jaw} 100% {{ transform: rotate(0deg); }} }}
 .talk {{ transform-origin: 356px 172px; opacity: 0; animation: talk {T}s infinite; }}
 @keyframes talk {{ 0% {{ opacity: 0; }} {talk} 100% {{ opacity: 0; }} }}
+.headf {{ transform-origin: 200px 200px; animation: nod {T}s infinite; }}
+@keyframes nod {{ 0% {{ transform: none; }} {nod} 100% {{ transform: none; }} }}
 
 .mascot {{ transform-origin: 170px 410px; animation: body {T}s infinite; }}
 @keyframes body {{ 0%, {pct(.3)} {{ transform: none; }} {pct(.55)} {{ transform: scale(1.03, .96); }}
-  {pct(.75)} {{ transform: rotate(4deg) translateX(6px); }} {pct(2.3)} {{ transform: rotate(4deg) translateX(6px); }}
-  {pct(2.55)} {{ transform: scale(1.04, .94); }} {pct(2.8)} {{ transform: translateY(-26px) scale(.98, 1.04); }}
-  {pct(3.05)} {{ transform: scale(1.05, .94); }} {pct(3.3)}, 100% {{ transform: none; }} }}
+  {pct(.75)} {{ transform: rotate(4deg) translateX(6px); }} {pct(2.2)} {{ transform: rotate(4deg) translateX(6px); }}
+  {pct(2.45)} {{ transform: scale(1.04, .94); }} {pct(2.7)} {{ transform: translateY(-26px) scale(.98, 1.04); }}
+  {pct(2.95)} {{ transform: scale(1.05, .94); }} {pct(3.2)}, 100% {{ transform: none; }} }}
 .bod {{ transform-origin: 170px 392px; animation: breathe 3.2s ease-in-out infinite; }}
 @keyframes breathe {{ 0%, 100% {{ transform: scale(1); }} 50% {{ transform: scale(1.012, 1.02); }} }}
 .tail {{ transform-origin: 140px 330px; animation: wag 4s ease-in-out infinite; }}
@@ -176,11 +224,13 @@ def css():
 .lid {{ transform-origin: 222px 92px; transform: scaleY(0); animation: blink 4.4s infinite; }}
 @keyframes blink {{ 0%, 88%, 100% {{ transform: scaleY(0); }} 92% {{ transform: scaleY(1); }} 96% {{ transform: scaleY(0); }} }}
 .pupil {{ animation: look {T}s ease-in-out infinite; }}
-@keyframes look {{ 0%, {pct(.5)} {{ transform: translate(0, 0); }} {pct(.8)}, {pct(9)} {{ transform: translate(3px, 1px); }} {pct(9.6)}, 100% {{ transform: translate(0, 0); }} }}
+@keyframes look {{ 0%, {pct(.5)} {{ transform: translate(0, 0); }} {pct(.8)}, {pct(12)} {{ transform: translate(3px, 1px); }} {pct(12.6)}, 100% {{ transform: translate(0, 0); }} }}
 
 @media (prefers-reduced-motion: reduce) {{
   * {{ animation: none !important; }}
   .bub {{ opacity: 1 !important; transform: none !important; }}
+  .say {{ opacity: 0 !important; }} .t00, .t10, .t20 {{ opacity: 1 !important; }}
+  .tab {{ opacity: .45 !important; }} .tab0 {{ opacity: 1 !important; }} .tab rect {{ fill-opacity: 0 !important; }} .tab0 rect {{ fill-opacity: 1 !important; }} .tab0 .on {{ opacity: 1 !important; }}
 }}
 """
 
@@ -200,9 +250,9 @@ def banner():
     return "\n".join([
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-labelledby="t d">',
         '<title id="t">Shoga-Speaks</title>',
-        '<desc id="d">Shoga, a cheerful green parrot, speaks three speech bubbles: for a developer in Roman-Urdu, '
-        'for a QA tester in Dutch and for a product owner in English. Shoga-Speaks makes Claude Code explain things '
-        'in your language and for your role.</desc>',
+        '<desc id="d">Shoga, a cheerful green parrot, speaks three speech bubbles, one each for a developer, a QA tester and '
+        'a product owner. The same three messages are said in Roman-Urdu, then Dutch, then English. Shoga-Speaks makes '
+        'Claude Code explain things in your language and for your role.</desc>',
         f'<defs>{DEFS}<clipPath id="card"><rect width="{W}" height="{H}" rx="28"/></clipPath></defs>',
         f'<style>{css()}</style>',
         '<g clip-path="url(#card)">',
@@ -210,10 +260,11 @@ def banner():
         '<circle class="spot" cx="300" cy="270" r="230"/>',
         dots,
         '<g transform="translate(130 34) scale(.94)"><g class="mascot">', mascot(), '</g></g>',
-        '<g filter="url(#lift)">', bubble(0, 560, 40), bubble(1, 604, 148), bubble(2, 560, 256), '</g>',
-        f'<path class="word" transform="translate(560 434)" d="{word}"/>',
-        f'<text class="tag" x="{560 + ww + 24}" y="432" style="font: 500 19px/1.2 {SANS}">Claude Code, explained</text>',
-        f'<text class="tag" x="{560 + ww + 24}" y="456" style="font: 500 19px/1.2 {SANS}">in your language and role.</text>',
+        tabs(586, 34),
+        '<g filter="url(#lift)">', bubble(0, 560, 92), bubble(1, 600, 192), bubble(2, 560, 292), '</g>',
+        f'<path class="word" transform="translate(560 452)" d="{word}"/>',
+        f'<text class="tag" x="{560 + ww + 24}" y="430" style="font: 500 19px/1.2 {SANS}">Claude Code, explained</text>',
+        f'<text class="tag" x="{560 + ww + 24}" y="454" style="font: 500 19px/1.2 {SANS}">in your language and role.</text>',
         '</g>',
         '</svg>',
     ])

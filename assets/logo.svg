@@ -7,43 +7,63 @@
 </defs>
 <style>
 .bg { fill: #EAF8EF; } .spot { fill: #D2F1DF; } .word { fill: #15301F; } .tag { fill: #4B6B5B; }
-.bubFill { fill: #FFFFFF; } .say { fill: #15301F; } .lang { fill: #5E7A6C; } .dot { fill: #15301F; opacity: .08; }
+.bubFill { fill: #FFFFFF; } .say { fill: #15301F; } .dot { fill: #15301F; opacity: .08; }
+.tab rect { fill: #5BD46E; stroke: #15301F; stroke-width: 2; } .tab text { fill: #15301F; } .tab .on { fill: #0E1A15; opacity: 0; }
 @media (prefers-color-scheme: dark) {
   .bg { fill: #0E1A15; } .spot { fill: #15291F; } .word { fill: #F1F7F3; } .tag { fill: #9BB8A9; }
   .bubFill { fill: #F7FBF8; } .dot { fill: #fff; opacity: .06; }
+  .tab rect { fill: #5BD46E; stroke: #5BD46E; } .tab text { fill: #F1F7F3; } .tab .on { fill: #0E1A15; }
 }
+.tab text { mix-blend-mode: normal; }
 .bub { transform-box: fill-box; transform-origin: 0% 60%; opacity: 0; }
-@keyframes pop0 { 0%, 5.8% { opacity: 0; transform: translate(-150px, 110px) scale(.2) rotate(-8deg); } 8.2% { opacity: 1; transform: translate(6px, 0) scale(1.06) rotate(1deg); } 9.3% { transform: translate(-2px, 0) scale(.98) rotate(0deg); } 10.4%, 80% { opacity: 1; transform: none; } 82.9%, 100% { opacity: 0; transform: translate(-40px, 0) scale(.6); } }
-.b0 { animation: pop0 12s infinite; }
-@keyframes pop1 { 0%, 11.2% { opacity: 0; transform: translate(-150px, 5px) scale(.2) rotate(-8deg); } 13.6% { opacity: 1; transform: translate(6px, 0) scale(1.06) rotate(1deg); } 14.8% { transform: translate(-2px, 0) scale(.98) rotate(0deg); } 15.8%, 80.7% { opacity: 1; transform: none; } 83.6%, 100% { opacity: 0; transform: translate(-40px, 0) scale(.6); } }
-.b1 { animation: pop1 12s infinite; }
-@keyframes pop2 { 0%, 16.7% { opacity: 0; transform: translate(-150px, -100px) scale(.2) rotate(-8deg); } 19% { opacity: 1; transform: translate(6px, 0) scale(1.06) rotate(1deg); } 20.2% { transform: translate(-2px, 0) scale(.98) rotate(0deg); } 21.2%, 81.3% { opacity: 1; transform: none; } 84.2%, 100% { opacity: 0; transform: translate(-40px, 0) scale(.6); } }
-.b2 { animation: pop2 12s infinite; }
+.say { transform-box: fill-box; transform-origin: 50% 60%; }
+@keyframes pop0 { 0%, 5% { opacity: 0; transform: translate(-150px, 100px) scale(.2) rotate(-8deg); } 7% { opacity: 1; transform: translate(6px, 0) scale(1.06) rotate(1deg); } 8% { transform: translate(-2px, 0) scale(.98) rotate(0deg); } 8.9%, 90% { opacity: 1; transform: none; } 92.5%, 100% { opacity: 0; transform: translate(-40px, 0) scale(.6); } }
+.b0 { animation: pop0 14s infinite; }
+@keyframes pop1 { 0%, 9.3% { opacity: 0; transform: translate(-150px, 0px) scale(.2) rotate(-8deg); } 11.3% { opacity: 1; transform: translate(6px, 0) scale(1.06) rotate(1deg); } 12.3% { transform: translate(-2px, 0) scale(.98) rotate(0deg); } 13.2%, 90.6% { opacity: 1; transform: none; } 93.1%, 100% { opacity: 0; transform: translate(-40px, 0) scale(.6); } }
+.b1 { animation: pop1 14s infinite; }
+@keyframes pop2 { 0%, 13.6% { opacity: 0; transform: translate(-150px, -100px) scale(.2) rotate(-8deg); } 15.6% { opacity: 1; transform: translate(6px, 0) scale(1.06) rotate(1deg); } 16.6% { transform: translate(-2px, 0) scale(.98) rotate(0deg); } 17.5%, 91.1% { opacity: 1; transform: none; } 93.6%, 100% { opacity: 0; transform: translate(-40px, 0) scale(.6); } }
+.b2 { animation: pop2 14s infinite; }
+@keyframes l00 { 0%, 38.5% { opacity: 1; transform: none; } 39.6%, 100% { opacity: 0; transform: scaleY(.1); } } .t00 { animation: l00 14s infinite; }
+@keyframes l01 { 0%, 39.4% { opacity: 0; transform: scaleY(.1); } 40.7% { opacity: 1; transform: scaleY(1.08); } 41.4% { transform: none; } 64.2% { opacity: 1; transform: none; } 65.3%, 100% { opacity: 0; transform: scaleY(.1); } } .t01 { animation: l01 14s infinite; }
+@keyframes l02 { 0%, 65.1% { opacity: 0; transform: scaleY(.1); } 66.4% { opacity: 1; transform: scaleY(1.08); } 67.1% { transform: none; } 100% { opacity: 1; transform: none; }  } .t02 { animation: l02 14s infinite; }
+@keyframes l10 { 0%, 39.5% { opacity: 1; transform: none; } 40.6%, 100% { opacity: 0; transform: scaleY(.1); } } .t10 { animation: l10 14s infinite; }
+@keyframes l11 { 0%, 40.4% { opacity: 0; transform: scaleY(.1); } 41.7% { opacity: 1; transform: scaleY(1.08); } 42.4% { transform: none; } 65.2% { opacity: 1; transform: none; } 66.3%, 100% { opacity: 0; transform: scaleY(.1); } } .t11 { animation: l11 14s infinite; }
+@keyframes l12 { 0%, 66.1% { opacity: 0; transform: scaleY(.1); } 67.4% { opacity: 1; transform: scaleY(1.08); } 68.1% { transform: none; } 100% { opacity: 1; transform: none; }  } .t12 { animation: l12 14s infinite; }
+@keyframes l20 { 0%, 40.5% { opacity: 1; transform: none; } 41.6%, 100% { opacity: 0; transform: scaleY(.1); } } .t20 { animation: l20 14s infinite; }
+@keyframes l21 { 0%, 41.4% { opacity: 0; transform: scaleY(.1); } 42.7% { opacity: 1; transform: scaleY(1.08); } 43.4% { transform: none; } 66.2% { opacity: 1; transform: none; } 67.3%, 100% { opacity: 0; transform: scaleY(.1); } } .t21 { animation: l21 14s infinite; }
+@keyframes l22 { 0%, 67.1% { opacity: 0; transform: scaleY(.1); } 68.4% { opacity: 1; transform: scaleY(1.08); } 69.1% { transform: none; } 100% { opacity: 1; transform: none; }  } .t22 { animation: l22 14s infinite; }
+@keyframes tab0 { 0%, 0% { opacity: .45; } 1.1%, 38.6% { opacity: 1; } 39.6%, 100% { opacity: .45; } } .tab0 { animation: tab0 14s infinite; } @keyframes tabf0 { 0%, 0% { fill-opacity: 0; } 1.1%, 38.6% { fill-opacity: 1; } 39.6%, 100% { fill-opacity: 0; } } .tab0 rect { animation: tabf0 14s infinite; } @keyframes tabo0 { 0%, 0% { opacity: 0; } 1.1%, 38.6% { opacity: 1; } 39.6%, 100% { opacity: 0; } } .tab0 .on { animation: tabo0 14s infinite; }
+@keyframes tab1 { 0%, 38.6% { opacity: .45; } 39.6%, 64.3% { opacity: 1; } 65.4%, 100% { opacity: .45; } } .tab1 { animation: tab1 14s infinite; } @keyframes tabf1 { 0%, 38.6% { fill-opacity: 0; } 39.6%, 64.3% { fill-opacity: 1; } 65.4%, 100% { fill-opacity: 0; } } .tab1 rect { animation: tabf1 14s infinite; } @keyframes tabo1 { 0%, 38.6% { opacity: 0; } 39.6%, 64.3% { opacity: 1; } 65.4%, 100% { opacity: 0; } } .tab1 .on { animation: tabo1 14s infinite; }
+@keyframes tab2 { 0%, 64.3% { opacity: .45; } 65.4%, 92.9% { opacity: 1; } 93.9%, 100% { opacity: .45; } } .tab2 { animation: tab2 14s infinite; } @keyframes tabf2 { 0%, 64.3% { fill-opacity: 0; } 65.4%, 92.9% { fill-opacity: 1; } 93.9%, 100% { fill-opacity: 0; } } .tab2 rect { animation: tabf2 14s infinite; } @keyframes tabo2 { 0%, 64.3% { opacity: 0; } 65.4%, 92.9% { opacity: 1; } 93.9%, 100% { opacity: 0; } } .tab2 .on { animation: tabo2 14s infinite; }
 .bubIn { animation: drift 6s ease-in-out infinite; } .b1 .bubIn { animation-delay: -2s; } .b2 .bubIn { animation-delay: -4s; }
 @keyframes drift { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 
-.jaw { transform-origin: 278px 170px; animation: jaw 12s infinite; }
-@keyframes jaw { 0% { transform: rotate(0deg); } 5.4% { transform: rotate(0deg); } 6.5% { transform: rotate(18deg); } 8.3% { transform: rotate(0deg); } 10.8% { transform: rotate(0deg); } 11.9% { transform: rotate(18deg); } 13.8% { transform: rotate(0deg); } 16.2% { transform: rotate(0deg); } 17.3% { transform: rotate(18deg); } 19.2% { transform: rotate(0deg); } 100% { transform: rotate(0deg); } }
-.talk { transform-origin: 356px 172px; opacity: 0; animation: talk 12s infinite; }
-@keyframes talk { 0% { opacity: 0; } 5.8% { opacity: 0; transform: scale(.6); } 6.7% { opacity: 1; transform: scale(1); } 8.7% { opacity: 0; transform: scale(1.15); } 11.2% { opacity: 0; transform: scale(.6); } 12.1% { opacity: 1; transform: scale(1); } 14.2% { opacity: 0; transform: scale(1.15); } 16.7% { opacity: 0; transform: scale(.6); } 17.5% { opacity: 1; transform: scale(1); } 19.6% { opacity: 0; transform: scale(1.15); } 100% { opacity: 0; } }
+.jaw { transform-origin: 278px 170px; animation: jaw 14s infinite; }
+@keyframes jaw { 0% { transform: rotate(0deg); } 4.6% { transform: rotate(0deg); } 5.6% { transform: rotate(18deg); } 7.1% { transform: rotate(0deg); } 8.9% { transform: rotate(0deg); } 9.9% { transform: rotate(18deg); } 11.4% { transform: rotate(0deg); } 13.2% { transform: rotate(0deg); } 14.1% { transform: rotate(18deg); } 15.7% { transform: rotate(0deg); } 38.2% { transform: rotate(0deg); } 39.1% { transform: rotate(18deg); } 40.7% { transform: rotate(0deg); } 63.9% { transform: rotate(0deg); } 64.9% { transform: rotate(18deg); } 66.4% { transform: rotate(0deg); } 100% { transform: rotate(0deg); } }
+.talk { transform-origin: 356px 172px; opacity: 0; animation: talk 14s infinite; }
+@keyframes talk { 0% { opacity: 0; } 5% { opacity: 0; transform: scale(.6); } 5.7% { opacity: 1; transform: scale(1); } 7.5% { opacity: 0; transform: scale(1.15); } 9.3% { opacity: 0; transform: scale(.6); } 10% { opacity: 1; transform: scale(1); } 11.8% { opacity: 0; transform: scale(1.15); } 13.6% { opacity: 0; transform: scale(.6); } 14.3% { opacity: 1; transform: scale(1); } 16.1% { opacity: 0; transform: scale(1.15); } 38.6% { opacity: 0; transform: scale(.6); } 39.3% { opacity: 1; transform: scale(1); } 41.1% { opacity: 0; transform: scale(1.15); } 64.3% { opacity: 0; transform: scale(.6); } 65% { opacity: 1; transform: scale(1); } 66.8% { opacity: 0; transform: scale(1.15); } 100% { opacity: 0; } }
+.headf { transform-origin: 200px 200px; animation: nod 14s infinite; }
+@keyframes nod { 0% { transform: none; } 37.9% { transform: none; } 39.3% { transform: rotate(3deg) translateX(4px); } 41.4% { transform: none; } 63.6% { transform: none; } 65% { transform: rotate(3deg) translateX(4px); } 67.1% { transform: none; } 100% { transform: none; } }
 
-.mascot { transform-origin: 170px 410px; animation: body 12s infinite; }
-@keyframes body { 0%, 2.5% { transform: none; } 4.6% { transform: scale(1.03, .96); }
-  6.2% { transform: rotate(4deg) translateX(6px); } 19.2% { transform: rotate(4deg) translateX(6px); }
-  21.2% { transform: scale(1.04, .94); } 23.3% { transform: translateY(-26px) scale(.98, 1.04); }
-  25.4% { transform: scale(1.05, .94); } 27.5%, 100% { transform: none; } }
+.mascot { transform-origin: 170px 410px; animation: body 14s infinite; }
+@keyframes body { 0%, 2.1% { transform: none; } 3.9% { transform: scale(1.03, .96); }
+  5.4% { transform: rotate(4deg) translateX(6px); } 15.7% { transform: rotate(4deg) translateX(6px); }
+  17.5% { transform: scale(1.04, .94); } 19.3% { transform: translateY(-26px) scale(.98, 1.04); }
+  21.1% { transform: scale(1.05, .94); } 22.9%, 100% { transform: none; } }
 .bod { transform-origin: 170px 392px; animation: breathe 3.2s ease-in-out infinite; }
 @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.012, 1.02); } }
 .tail { transform-origin: 140px 330px; animation: wag 4s ease-in-out infinite; }
 @keyframes wag { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(4deg); } }
 .lid { transform-origin: 222px 92px; transform: scaleY(0); animation: blink 4.4s infinite; }
 @keyframes blink { 0%, 88%, 100% { transform: scaleY(0); } 92% { transform: scaleY(1); } 96% { transform: scaleY(0); } }
-.pupil { animation: look 12s ease-in-out infinite; }
-@keyframes look { 0%, 4.2% { transform: translate(0, 0); } 6.7%, 75% { transform: translate(3px, 1px); } 80%, 100% { transform: translate(0, 0); } }
+.pupil { animation: look 14s ease-in-out infinite; }
+@keyframes look { 0%, 3.6% { transform: translate(0, 0); } 5.7%, 85.7% { transform: translate(3px, 1px); } 90%, 100% { transform: translate(0, 0); } }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; }
   .bub { opacity: 1 !important; transform: none !important; }
+  .say { opacity: 0 !important; } .t00, .t10, .t20 { opacity: 1 !important; }
+  .tab { opacity: .45 !important; } .tab0 { opacity: 1 !important; } .tab rect { fill-opacity: 0 !important; } .tab0 rect { fill-opacity: 1 !important; } .tab0 .on { opacity: 1 !important; }
 }
 .talk { display: none; } .mascot, .jaw, .pupil { animation: none; }</style>
 <circle class="bg" cx="256" cy="256" r="252"/>

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.svg" width="100%" alt="Shoga-Speaks: a green Kashmiri parrot asks “Did you understand?” in Roman-Urdu, Urdu, Hindi, English and Dutch.">
+  <img src="assets/banner.svg" width="100%" alt="Shoga-Speaks: at dusk over a Kashmiri lake, a rose-ringed parakeet on a chinar branch asks “Did you understand?” in Roman-Urdu, Urdu, Hindi, English and Dutch, while a Claude Code terminal answers in Roman-Urdu and unfolds the English.">
 </p>
 
 <p align="center">

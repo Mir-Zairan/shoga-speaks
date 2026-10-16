@@ -17,6 +17,10 @@ claude plugin validate . --strict
 
 Try it locally with `claude --plugin-dir .`.
 
+## Logo and banner
+
+`assets/banner.svg` and `assets/logo.svg` are generated. Edit `assets/src/build.py` and run `python3 assets/src/build.py` (needs `pip install fonttools`).
+
 ## Style
 
 - Plain, simple words in docs and in every language file. That is the whole point of the project.

@@ -2,6 +2,7 @@
 language: mylanguage
 scripts: [native, roman]
 default_script: roman
+latin.native: false
 label.native: <name of the language in its own script>
 label.roman: <name of the romanized version, e.g. Roman-Kashmiri>
 rtl.native: false

@@ -85,5 +85,6 @@ If yes:
 In the user's chosen language and style (it is short anyway), tell them:
 - What is set, in one line.
 - Type `/clear` or start a new session so the full settings load.
-- Shortcuts: `en` / `tr` for the other language, `shoga off` / `shoga on`, `shoga status`.
+- Shortcuts: `en` / `tr` for the other language, `??` when something was unclear, `shoga know <terms>` for terms they already know, `shoga simpler` / `shoga deeper`, `shoga status`, `shoga off` / `shoga on`.
+- On Claude Code 2.1.287 or later, the `▸` line under replies can be pressed to fold out the other language.
 - For a different setup in one project, use `.claude/shoga-speaks.local.json` there.

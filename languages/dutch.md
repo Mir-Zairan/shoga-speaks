@@ -3,6 +3,7 @@ language: dutch
 scripts: [native]
 default_script: native
 label.native: Nederlands
+latin.native: true
 more_detail.native: Meer details nodig?
 hint.native: ▸ {other}: typ "{key}"
 ---

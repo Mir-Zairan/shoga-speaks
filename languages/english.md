@@ -3,6 +3,7 @@ language: english
 scripts: [native]
 default_script: native
 label.native: English
+latin.native: true
 more_detail.native: Want more detail?
 hint.native: ▸ {other}: type "{key}"
 ---

@@ -1,8 +1,30 @@
 {
   "name": "shoga-speaks",
   "displayName": "Shoga-Speaks",
-  "version": "0.1.0",
-  "description": "Claude explains it your way: in your language and script, for your role, short and simple. Covers chat, PR comments and artifacts.",
-  "author": { "name": "Zairan Mir" },
-  "keywords": ["language", "translation", "roman-urdu", "hindi", "multilingual", "roles", "accessibility", "pr-review"]
+  "version": "0.2.0",
+  "description": "Claude Code explains everything in your language, script and role: Roman-Urdu, Urdu, Hinglish, Hindi, Dutch or plain English, for devs, QA, DevOps, POs and PMs. Plain-language approvals, failure explanations, quality checks and a fold-out translation.",
+  "author": {
+    "name": "Zairan Mir"
+  },
+  "homepage": "https://github.com/Mir-Zairan/shoga-speaks",
+  "repository": "https://github.com/Mir-Zairan/shoga-speaks",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "claude-code-plugin",
+    "multilingual",
+    "translation",
+    "roman-urdu",
+    "urdu",
+    "hindi",
+    "hinglish",
+    "dutch",
+    "plain-language",
+    "accessibility",
+    "qa",
+    "product-owner",
+    "code-review",
+    "developer-experience"
+  ],
+  "types": "./types/index.d.ts"
 }

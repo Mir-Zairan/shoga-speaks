@@ -8,7 +8,15 @@
     {
       "name": "shoga-speaks",
       "source": "./",
-      "description": "Claude explains it your way: in your language and script, for your role, short and simple."
+      "description": "Claude Code explains everything in your language, script and role.",
+      "category": "productivity",
+      "tags": [
+        "multilingual",
+        "roman-urdu",
+        "hindi",
+        "plain-language",
+        "roles"
+      ]
     }
   ]
 }

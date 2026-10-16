@@ -3,11 +3,17 @@
   "language": "english",
   "script": "default",
   "github_script": "default",
-  "roles": ["dev"],
+  "roles": [
+    "dev"
+  ],
   "length": "short",
   "keep_english_terms": true,
   "cli_open": "translated",
   "github_open": "english",
+  "explain_commands": "danger",
+  "explain_failures": true,
+  "quality_guard": "remind",
+  "glossary_hover": "auto",
   "apply_to": {
     "chat": true,
     "pr_comments": true,
@@ -16,7 +22,10 @@
     "code_comments": false
   },
   "artifacts": {
-    "switch_languages": ["mine", "english"],
+    "switch_languages": [
+      "mine",
+      "english"
+    ],
     "role_switch": false
   }
 }

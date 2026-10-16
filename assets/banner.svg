@@ -7,13 +7,9 @@
 <filter id="lift" x="-10%" y="-20%" width="120%" height="160%"><feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#15301F" flood-opacity=".14"/></filter>
 <clipPath id="card"><rect width="1280" height="500" rx="28"/></clipPath></defs>
 <style>
-.bg { fill: #EAF8EF; } .spot { fill: #D2F1DF; } .word { fill: #15301F; } .tag { fill: #4B6B5B; }
+.bg { fill: #FFFFFF; } .spot { fill: #EAF8EF; } .word { fill: #15301F; } .tag { fill: #4B6B5B; }
 .bubFill { fill: #FFFFFF; } .say { fill: #15301F; } .dot { fill: #15301F; opacity: .08; }
 .tab rect { fill: #5BD46E; stroke: #15301F; stroke-width: 2; } .tab text { fill: #15301F; } .tab .on { fill: #0E1A15; opacity: 0; }
-@media (prefers-color-scheme: dark) {
-  .bg { fill: #0E1A15; } .spot { fill: #15291F; } .word { fill: #F1F7F3; } .tag { fill: #9BB8A9; }
-  .bubFill { fill: #F7FBF8; } .dot { fill: #fff; opacity: .06; }
-  .tab rect { fill: #5BD46E; stroke: #5BD46E; } .tab text { fill: #F1F7F3; } .tab .on { fill: #0E1A15; }
 }
 .tab text { mix-blend-mode: normal; }
 .bub { transform-box: fill-box; transform-origin: 0% 60%; opacity: 0; }

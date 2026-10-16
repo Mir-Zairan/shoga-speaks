@@ -4,8 +4,8 @@
     pip install fonttools
     python3 assets/src/build.py
 
-Vector only, no external files. Light and dark palettes follow the viewer's colour
-scheme. Animation is CSS and stops under reduced motion.
+Vector only, no external files. The background is white in light and dark mode alike.
+Animation is CSS and stops under reduced motion.
 """
 import os
 
@@ -190,13 +190,9 @@ def css():
     talk = " ".join(f"{pct(t)} {{ opacity: 0; transform: scale(.6); }} {pct(t + .1)} {{ opacity: 1; transform: scale(1); }} {pct(t + .35)} {{ opacity: 0; transform: scale(1.15); }}" for t in talks)
     nod = " ".join(f"{pct(t - .1)} {{ transform: none; }} {pct(t + .1)} {{ transform: rotate(3deg) translateX(4px); }} {pct(t + .4)} {{ transform: none; }}" for t in SWITCH)
     return f"""
-.bg {{ fill: #EAF8EF; }} .spot {{ fill: #D2F1DF; }} .word {{ fill: #15301F; }} .tag {{ fill: #4B6B5B; }}
+.bg {{ fill: #FFFFFF; }} .spot {{ fill: #EAF8EF; }} .word {{ fill: #15301F; }} .tag {{ fill: #4B6B5B; }}
 .bubFill {{ fill: #FFFFFF; }} .say {{ fill: #15301F; }} .dot {{ fill: #15301F; opacity: .08; }}
 .tab rect {{ fill: #5BD46E; stroke: #15301F; stroke-width: 2; }} .tab text {{ fill: #15301F; }} .tab .on {{ fill: #0E1A15; opacity: 0; }}
-@media (prefers-color-scheme: dark) {{
-  .bg {{ fill: #0E1A15; }} .spot {{ fill: #15291F; }} .word {{ fill: #F1F7F3; }} .tag {{ fill: #9BB8A9; }}
-  .bubFill {{ fill: #F7FBF8; }} .dot {{ fill: #fff; opacity: .06; }}
-  .tab rect {{ fill: #5BD46E; stroke: #5BD46E; }} .tab text {{ fill: #F1F7F3; }} .tab .on {{ fill: #0E1A15; }}
 }}
 .tab text {{ mix-blend-mode: normal; }}
 .bub {{ transform-box: fill-box; transform-origin: 0% 60%; opacity: 0; }}

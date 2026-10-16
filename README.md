@@ -1,141 +1,104 @@
-# 🦜 Shoga-Speaks
+<p align="center">
+  <img src="assets/banner.svg" width="100%" alt="Shoga-Speaks: a green Kashmiri parrot asks “Did you understand?” in Roman-Urdu, Urdu, Hindi, English and Dutch.">
+</p>
 
-*Shoga* means parrot in Kashmiri.
+<p align="center">
+  <b>A Claude Code plugin that explains everything in your language, your script and for your role.</b><br>
+  Short, simple, and only the jargon you already know.
+</p>
 
-A Claude Code plugin that makes Claude explain things **your way**: in your language and
-script, written for your role, short and simple. It works automatically on everything
-Claude writes (chat, other skills' output, PR comments, artifacts), with nothing to invoke.
+<p align="center">
+  <a href="https://github.com/Mir-Zairan/shoga-speaks/releases"><img src="https://img.shields.io/badge/version-0.2.0-3BB273" alt="Version 0.2.0"></a>
+  <img src="https://img.shields.io/badge/Claude%20Code-plugin-0B2E2B" alt="Claude Code plugin">
+  <img src="https://img.shields.io/badge/languages-4-2C7DA0" alt="4 languages">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT license"></a>
+</p>
 
-```
-Release mat karein. Do problems hain: ek security risk aur ek slow page ka risk.
+---
 
-**1. Security (SQL injection) — line 6**
-- `customer_id` seedha query mein joda ja raha hai, koi safety check nahi.
-...
-**Aap ka decision:** release ko hold karein jab tak dev team yeh fix na kar de.
+Claude Code answers in developer English. If you are a QA tester, product owner or project manager, or you think in **Urdu, Hindi or Dutch**, that costs focus. **Shoga-Speaks** (*shoga* is Kashmiri for parrot) makes every answer land the first time:
 
-▸ English: "en" likhein
-```
-*(Roman-Urdu, role: Product Owner)*
+> **You** (Product Owner, Roman-Urdu): *Is this PR okay to release?*
+>
+> **Release mat karein.** Do problems hain: ek security risk, ek slow page.
+> - Customer ka `id` seedha query mein ja raha hai. Data leak ho sakta hai.
+> - 500 orders pe page bohat slow hoga.
+>
+> **Aap ka decision:** fix hone tak release hold karein.
+> ▸ English
 
 ## Install
 
-```bash
-claude plugin marketplace add <owner>/shoga-speaks
-claude plugin install shoga-speaks@shoga-speaks
+```text
+/plugin marketplace add Mir-Zairan/shoga-speaks
+/plugin install shoga-speaks@shoga-speaks
+/shoga-speaks:setup
 ```
 
-Then in Claude Code run `/shoga-speaks:setup`.
-
-To try it from a local folder: `claude --plugin-dir ./shoga-speaks`
-
-Requires Node.js 18+ on your PATH (the hook script has no dependencies).
+Setup asks for your language, script and roles. You need Node.js 18 or later. The display features need Claude Code 2.1.287 or later.
 
 ## What you get
 
-| | |
-|---|---|
-| **Every reply** | In your language and script, for your role(s), at your chosen length |
-| **Other language on request** | Type `en` (or `tr`) to see the last answer in the other language |
-| **PR comments** | English open, your language in a collapsed `<details>` block (or the reverse) |
-| **Artifacts** | Focused pages with a language switch: `/shoga-speaks:page <topic>`, or automatically whenever Claude makes one |
-| **Project glossary** | Your project's own terms, kept as-is and explained simply |
+| | What happens | Works on |
+|---|---|---|
+| 🗣️ **Your language and script** | Every answer is in Roman-Urdu, Urdu, Hinglish, Hindi, Dutch or plain English | any version |
+| 🎭 **Your role** | Dev gets the fix, QA gets test steps, a PO gets the decision | any version |
+| ⚠️ **Plain-language approvals** | `rm -rf build` → *“These files are deleted for good.”* | any version |
+| 🧪 **Failures explained** | A failing test or build gets one plain line for your role first | any version |
+| ✅ **Quality check** | Each reply is checked for hard words, mixed scripts and length | any version |
+| 📈 **Learns your level** | `??` gives a simpler version; terms you know stop being explained | any version |
+| 🔁 **Fold or unfold the other language** | Press `▸ English` under a reply, or type `en` | 2.1.287+ |
+| 📖 **Hover glossary** | Terms like *N+1* or *migration* show a one-line meaning | 2.1.287+ |
+| 💬 **Bilingual PR comments** | English on GitHub, your language folded underneath | any version |
+| 📄 **Explainer pages** | `/shoga-speaks:page PR 482 for QA` gives a one-page summary with a language switch | any version |
 
 ## Shortcuts
 
-Type these as the whole prompt:
+Type these as the whole prompt. None of them uses a Claude turn, except `??` and the language shortcuts on Claude Code versions without the display mod.
 
-| Prompt | Does |
+| Type | Does |
 |---|---|
-| `en` / `tr` | Repeat the last explanation in English / your language |
-| `shoga status` | Show current settings |
+| `en` / `tr` | Show the last answer in English / in your language |
+| `??` | “I didn't get that”: explain it simpler, and keep it simpler |
+| `shoga simpler` / `shoga deeper` | Change your level (−2 to +2) |
+| `shoga know N+1, migration` | Stop explaining these terms |
+| `shoga status` | Show your settings and stats |
 | `shoga off` / `shoga on` | Turn it off or on for this session |
 
-## Settings
-
-`/shoga-speaks:setup` writes these for you. Files, lowest to highest priority:
-
-1. Plugin defaults (`defaults/settings.json`)
-2. Team, per project: `.claude/shoga-speaks.json` (commit it)
-3. You: `~/.claude/shoga-speaks.json`
-4. You, one project only: `.claude/shoga-speaks.local.json`
-
-```json
-{
-  "language": "urdu",
-  "script": "roman",
-  "github_script": "native",
-  "roles": ["qa", "dev"],
-  "length": "short",
-  "keep_english_terms": true,
-  "cli_open": "translated",
-  "github_open": "english",
-  "apply_to": {
-    "chat": true,
-    "pr_comments": true,
-    "artifacts": true,
-    "commit_messages": false,
-    "code_comments": false
-  },
-  "artifacts": {
-    "switch_languages": ["mine", "english"],
-    "role_switch": false
-  }
-}
-```
-
-| Key | Values |
-|---|---|
-| `language` | `english`, `urdu`, `hindi`, `dutch` (any file in `languages/`) |
-| `script` / `github_script` | `roman`, `native`, or `default`. `github_script` falls back to `script` |
-| `roles` | `dev`, `qa`, `devops`, `po`, `pm`, `support`. The **first** role leads; others get one line each |
-| `length` | `short`, `medium`, `detailed` |
-| `cli_open` | `translated` or `english`: what the terminal shows first |
-| `github_open` | `english` or `translated`: what PR comments show open |
-| `artifacts.switch_languages` | `mine`, `english`, or `language:script` like `urdu:native` |
-
-Settings changes apply fully after `/clear` or a new session.
-
-## Languages and scripts
+## Languages and roles
 
 | Language | Scripts |
 |---|---|
-| English | plain English (B1) |
-| Urdu | `roman` (Roman-Urdu) · `native` (اردو) |
-| Hindi | `roman` (Hinglish) · `native` (हिन्दी) |
-| Dutch | plain Dutch (B1) |
+| Urdu | Roman-Urdu · اردو |
+| Hindi | Hinglish · हिन्दी |
+| Dutch | Nederlands |
+| English | plain English |
 
-### Add a language
+**Roles:** `dev` · `qa` · `devops` · `po` · `pm` · `support`. You can pick several; the first one leads.
 
-Copy `languages/_template.md` to `languages/<name>.md` and fill it in: the scripts it
-supports, the tone, fixed spellings for roman text, and a "hard word → simple word" list.
-No code changes. Native speakers are the best people to write these. Kashmiri, Punjabi
-and Sindhi contributions are especially welcome.
+Missing your language? A language is one Markdown file. See **[Add a language](docs/languages.md)**. Kashmiri, Punjabi and Sindhi are very welcome.
 
-### Add a role
+## Settings
 
-Add `roles/<name>.md` with what the role cares about, which jargon is fine, what to
-leave out, and how an answer should end.
+`/shoga-speaks:setup` writes them for you to `~/.claude/shoga-speaks.json`:
 
-## How it works
+```json
+{ "language": "urdu", "script": "roman", "roles": ["qa", "dev"], "length": "short" }
+```
 
-Hooks cannot rewrite Claude's replies after they are written, so Shoga-Speaks shapes
-them before they are written:
+Every option is in **[docs/settings.md](docs/settings.md)**.
 
-- **SessionStart** loads the rules, your language guide, your roles and the project
-  glossary once (re-loaded after `/clear` and compaction).
-- **UserPromptSubmit** adds a one-line reminder to every prompt, and handles the
-  shortcuts.
+## Why not just a line in CLAUDE.md?
 
-Because it works through instructions, Claude can occasionally slip (a formal word, a
-longer answer than asked). The per-prompt reminder keeps this rare. If you see a word
-that keeps coming back, add it to the language file's list.
+CLAUDE.md can only ask Claude to follow rules. Shoga-Speaks also **checks** each reply, **remembers** what you understand, **explains** approval prompts and failures, and **changes what is drawn** on screen. In a small side-by-side test it gave a Product Owner about half the code jargon of a CLAUDE.md rule, and no mixed-script slips. See **[docs/why.md](docs/why.md)**.
 
-## Limits
+## Learn more
 
-- The terminal cannot collapse text. The other language is shown on request (`en` / `tr`),
-  not hidden in the same reply. GitHub and artifacts do have real collapsing.
-- Right-to-left scripts often display badly in terminals. Use `roman` in the CLI and
-  `native` for GitHub and artifacts.
-- Quality is best for widely written languages. Low-resource languages need a good
-  language file.
+- [How it works](docs/how-it-works.md)
+- [Settings](docs/settings.md)
+- [Add a language or role](docs/languages.md)
+- [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md) · [Security](SECURITY.md)
+
+## License
+
+[MIT](LICENSE) © Zairan Mir

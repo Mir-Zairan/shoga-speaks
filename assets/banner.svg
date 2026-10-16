@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 420" width="1280" height="420" role="img" aria-labelledby="t d">
+  <title id="t">Shoga-Speaks</title>
+  <desc id="d">A green Kashmiri parrot asks "Did you understand?" in Roman-Urdu, Urdu, Hindi, English and Dutch. Shoga-Speaks is a Claude Code plugin that explains things in your language, your script and for your role.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B2E2B"/>
+      <stop offset="1" stop-color="#123B3A"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.2" cy="0.55" r="0.45">
+      <stop offset="0" stop-color="#3BB273" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#3BB273" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5BD08A"/>
+      <stop offset="1" stop-color="#2E9E62"/>
+    </linearGradient>
+    <linearGradient id="wing" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2A8F5B"/>
+      <stop offset="1" stop-color="#1D6E45"/>
+    </linearGradient>
+    <linearGradient id="tail" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2E9E62"/>
+      <stop offset="1" stop-color="#2C7DA0"/>
+    </linearGradient>
+    <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.2" fill="#FFFFFF" fill-opacity="0.05"/>
+    </pattern>
+    <clipPath id="card"><rect width="1280" height="420" rx="28"/></clipPath>
+  </defs>
+  <style>
+    .word { font: 800 68px/1 Inter, "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; fill: #F4FBF7; letter-spacing: -1.5px; }
+    .word .dash { fill: #5BD08A; }
+    .tag { font: 500 25px/1.3 Inter, "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; fill: #B9D8CC; }
+    .chip text { font: 600 17px/1 Inter, "Segoe UI", system-ui, sans-serif; fill: #CFE8DD; }
+    .chip rect { fill: #FFFFFF; fill-opacity: 0.06; stroke: #FFFFFF; stroke-opacity: 0.12; }
+    .say { font: 700 34px/1 Inter, "Segoe UI", system-ui, sans-serif; fill: #0B2E2B; }
+    .say.ur { font-family: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", "Noto Naskh Arabic", "Segoe UI", "Geeza Pro", sans-serif; font-size: 32px; }
+    .say.hi { font-family: "Noto Sans Devanagari", "Nirmala UI", "Kohinoor Devanagari", "Segoe UI", sans-serif; }
+    .lang { font: 600 13px/1 Inter, "Segoe UI", system-ui, sans-serif; fill: #2E7D5B; letter-spacing: 1.2px; }
+
+    .phrase { opacity: 0; animation: cycle 15s infinite; }
+    .p2 { animation-delay: 3s; } .p3 { animation-delay: 6s; } .p4 { animation-delay: 9s; } .p5 { animation-delay: 12s; }
+    @keyframes cycle { 0%, 1% { opacity: 0; transform: translateY(6px); } 4%, 18% { opacity: 1; transform: translateY(0); } 21%, 100% { opacity: 0; transform: translateY(-6px); } }
+
+    .chip { animation: lit 12s infinite; }
+    .c2 { animation-delay: 2s; } .c3 { animation-delay: 4s; } .c4 { animation-delay: 6s; } .c5 { animation-delay: 8s; } .c6 { animation-delay: 10s; }
+    @keyframes lit { 0%, 16% { opacity: 1; } 17%, 100% { opacity: 0.45; } }
+    .chip { opacity: 0.45; }
+
+    .head { transform-origin: 300px 205px; animation: bob 4s ease-in-out infinite; }
+    @keyframes bob { 0%, 100% { transform: rotate(0deg); } 30% { transform: rotate(-5deg); } 60% { transform: rotate(2deg); } }
+    .lid { transform-origin: 316px 158px; transform: scaleY(0); animation: blink 5s infinite; }
+    @keyframes blink { 0%, 93%, 100% { transform: scaleY(0); } 95.5% { transform: scaleY(1); } }
+    .bubble { transform-origin: 470px 120px; animation: pop 15s infinite; }
+    @keyframes pop { 0%, 100% { transform: scale(1); } 1% { transform: scale(0.97); } 3% { transform: scale(1.02); } 5% { transform: scale(1); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .phrase, .chip, .head, .lid, .bubble { animation: none; }
+      .p1, .chip { opacity: 1; }
+    }
+  </style>
+
+  <g clip-path="url(#card)">
+    <rect width="1280" height="420" fill="url(#bg)"/>
+    <rect width="1280" height="420" fill="url(#dots)"/>
+    <rect width="1280" height="420" fill="url(#glow)"/>
+
+    <g transform="translate(-70 0)">
+    <!-- perch -->
+    <rect x="128" y="318" width="290" height="14" rx="7" fill="#8B5E3C"/>
+    <rect x="128" y="318" width="290" height="5" rx="2.5" fill="#A87449"/>
+
+    <!-- parrot: rose-ringed parakeet (the Kashmiri "shoga") -->
+    <g id="parrot">
+      <path d="M232 296 Q212 360 178 418 Q228 372 256 304 Z" fill="url(#tail)"/>
+      <path d="M250 300 Q240 372 222 420 Q262 376 272 306 Z" fill="#2C7DA0" opacity="0.9"/>
+      <path d="M232 160 C176 186 182 296 238 318 C292 334 326 290 318 232 C312 196 286 168 232 160 Z" fill="url(#body)"/>
+      <path d="M226 196 C196 232 202 290 236 312 C262 290 280 246 268 206 C258 188 240 186 226 196 Z" fill="url(#wing)"/>
+      <path d="M232 214 C220 238 222 266 234 290" stroke="#5BD08A" stroke-opacity="0.35" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M248 210 C240 236 242 262 250 284" stroke="#5BD08A" stroke-opacity="0.3" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <g fill="#4A4F55">
+        <rect x="246" y="312" width="7" height="12" rx="3"/>
+        <rect x="270" y="312" width="7" height="12" rx="3"/>
+      </g>
+
+      <g class="head">
+        <circle cx="300" cy="150" r="56" fill="url(#body)"/>
+        <path d="M252 182 Q300 228 350 184" stroke="#1B1B1B" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M250 190 Q300 238 350 192" stroke="#F27BA6" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M340 126 C384 124 392 172 368 190 C362 174 352 166 340 166 Z" fill="#E63946"/>
+        <path d="M340 166 C352 166 362 172 366 186 C356 192 344 188 338 178 Z" fill="#9E1B32"/>
+        <path d="M342 128 C362 128 374 138 378 152" stroke="#FF8A8A" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7"/>
+        <circle cx="318" cy="140" r="13" fill="#FFFFFF" stroke="#F5A623" stroke-width="3"/>
+        <circle cx="321" cy="140" r="7" fill="#111"/>
+        <circle cx="324" cy="137" r="2.2" fill="#FFF"/>
+        <rect class="lid" x="303" y="125" width="30" height="31" rx="14" fill="#4CC77F"/>
+      </g>
+    </g>
+
+    <!-- speech bubble -->
+    <g class="bubble">
+      <path d="M420 58 h300 a22 22 0 0 1 22 22 v64 a22 22 0 0 1 -22 22 h-262 l-40 30 l10 -30 h-8 a22 22 0 0 1 -22 -22 v-64 a22 22 0 0 1 22 -22 z" fill="#F4FBF7"/>
+      <g class="phrase p1"><text class="say" x="572" y="124" text-anchor="middle">Samajh aaya?</text><text class="lang" x="572" y="150" text-anchor="middle">ROMAN-URDU</text></g>
+      <g class="phrase p2"><text class="say ur" x="572" y="122" text-anchor="middle" direction="rtl">سمجھ آیا؟</text><text class="lang" x="572" y="150" text-anchor="middle">URDU</text></g>
+      <g class="phrase p3"><text class="say hi" x="572" y="122" text-anchor="middle">समझ आया?</text><text class="lang" x="572" y="150" text-anchor="middle">HINDI</text></g>
+      <g class="phrase p4"><text class="say" x="572" y="124" text-anchor="middle">Got it?</text><text class="lang" x="572" y="150" text-anchor="middle">ENGLISH</text></g>
+      <g class="phrase p5"><text class="say" x="572" y="124" text-anchor="middle">Duidelijk?</text><text class="lang" x="572" y="150" text-anchor="middle">NEDERLANDS</text></g>
+    </g>
+
+    </g>
+
+    <!-- wordmark -->
+    <text class="word" x="728" y="128">Shoga<tspan class="dash">-</tspan>Speaks</text>
+    <text class="tag" x="731" y="178">Claude Code, explained your way.</text>
+    <text class="tag" x="731" y="212">Your language · your script · your role.</text>
+
+    <!-- roles -->
+    <g transform="translate(731 256)">
+      <g class="chip c1"><rect width="66" height="34" rx="17"/><text x="33" y="22" text-anchor="middle">Dev</text></g>
+      <g class="chip c2" transform="translate(76 0)"><rect width="58" height="34" rx="17"/><text x="29" y="22" text-anchor="middle">QA</text></g>
+      <g class="chip c3" transform="translate(144 0)"><rect width="90" height="34" rx="17"/><text x="45" y="22" text-anchor="middle">DevOps</text></g>
+      <g class="chip c4" transform="translate(244 0)"><rect width="58" height="34" rx="17"/><text x="29" y="22" text-anchor="middle">PO</text></g>
+      <g class="chip c5" transform="translate(312 0)"><rect width="58" height="34" rx="17"/><text x="29" y="22" text-anchor="middle">PM</text></g>
+      <g class="chip c6" transform="translate(380 0)"><rect width="96" height="34" rx="17"/><text x="48" y="22" text-anchor="middle">Support</text></g>
+    </g>
+    <text class="tag" x="731" y="344" style="font-size:18px; fill:#7FB8A2">A plugin for Claude Code</text>
+  </g>
+</svg>

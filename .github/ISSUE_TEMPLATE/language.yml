@@ -1,0 +1,17 @@
+name: Language or script request
+description: Ask for a new language or script, or offer to write one
+labels: ["language"]
+body:
+  - type: input
+    id: language
+    attributes: { label: Language, placeholder: "e.g. Kashmiri" }
+    validations: { required: true }
+  - type: input
+    id: scripts
+    attributes: { label: Scripts, placeholder: "e.g. Perso-Arabic, Roman" }
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Can you help?
+      options:
+        - label: I speak this language and can write or review the language file

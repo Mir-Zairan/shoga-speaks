@@ -1,0 +1,14 @@
+# Changelog
+
+## 0.2.0
+
+- **Display mod** (Claude Code 2.1.287+): fold and unfold the other language under each reply, translated on demand; `en` / `tr` without a Claude turn; plain-language lines under approval dialogs and tool rows; hover glossary; status line.
+- **Plain-language approvals** for risky shell commands, in 6 language variants.
+- **Failures explained**: failing tests and builds get one plain line for your role.
+- **Quality check** after every reply: hard words, mixed scripts, length, code for non-developer roles.
+- **Learns your level**: `??`, `shoga simpler`, `shoga deeper`, `shoga know`.
+- New logo, banner and docs.
+
+## 0.1.0
+
+- First version: answers in your language, script and role; bilingual PR comments; explainer pages; setup skill.

@@ -15,7 +15,7 @@ You can write *“Always reply in Roman Urdu, I am a product owner, keep it shor
 | **Explain failing tests and builds** every time | ❌ (only if Claude decides to) | ✅ |
 | Keep PR comments, commits and code in English for the team | ❌ (applies everywhere) | ✅ |
 | Fold or unfold the other language without a new turn | ❌ | ✅ display mod |
-| Hover glossary for technical terms | ❌ | ✅ display mod |
+| Term hints and a folded technical part | ❌ | ✅ display mod |
 | Each teammate picks their own language, one shared setup | ❌ (one file, one language) | ✅ |
 
 ## A small side-by-side test

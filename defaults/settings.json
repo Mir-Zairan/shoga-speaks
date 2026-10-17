@@ -13,7 +13,8 @@
   "explain_commands": "danger",
   "explain_failures": true,
   "quality_guard": "remind",
-  "glossary_hover": "auto",
+  "layers": "story",
+  "term_hints": "on",
   "apply_to": {
     "chat": true,
     "pr_comments": true,

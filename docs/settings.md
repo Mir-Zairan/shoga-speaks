@@ -29,7 +29,8 @@ Your level, known terms and stats are kept in `~/.claude/shoga-speaks/profile.js
 | `explain_commands` | `danger`, `caution`, `off` | `danger` | Which shell commands get a plain explanation in the approval prompt (see below) |
 | `explain_failures` | `true` / `false` | `true` | Explain failing tests and builds in one plain line first |
 | `quality_guard` | `remind`, `fix`, `off` | `remind` | What happens when a reply slips (see below) |
-| `glossary_hover` | `auto`, `on`, `off` | `auto` | Term footer under replies. `auto` is on unless your first role is dev or devops |
+| `layers` | `story`, `technical`, `technical-only` | `story` | What a reply leads with. `story`: plain story, technical part folded. `technical`: technical part, story folded. `technical-only`: no story. Each role has its own technical part (`roles/*.md`) |
+| `term_hints` | `on`, `off` | `on` | Claude marks up to 5 words you may not know; the display mod highlights them and a click opens a short card. `glossary_hover: "off"` (0.2.0) still turns it off |
 | `apply_to.chat` | `true` / `false` | `true` | Shape chat replies |
 | `apply_to.pr_comments` | `true` / `false` | `true` | Bilingual PR comments |
 | `apply_to.artifacts` | `true` / `false` | `true` | Shape artifacts and pages |

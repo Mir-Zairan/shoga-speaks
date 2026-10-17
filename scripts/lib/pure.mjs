@@ -138,6 +138,75 @@ export function findTerms(text, glossary, known = [], max = 5) {
   return hits.sort((a, b) => a.at - b.at).slice(0, max);
 }
 
+// ---------- layers: the story, the technical part, marked terms ----------
+// A reply written in the "folded" layout (core/layers.md):
+//   story … ▸ Technical … technical part … ▸ Terms … "- term: meaning" … language line
+
+export const TECH_LINE = /^[ \t]*▸[ \t]*Technical[ \t]*:?[ \t]*$/m;
+export const TERMS_LINE = /^[ \t]*▸[ \t]*Terms[ \t]*:?[ \t]*$/m;
+const TERM_MARK = /\{\{(\S(?:[^{}\n]{0,58}\S)?)\}\}/g;
+const CODE_SPAN = /(```[\s\S]*?(?:```|$)|`[^`\n]*`)/g;
+
+export const termId = (term) => String(term).toLowerCase().replace(/[`*_]/g, "").trim().replace(/[^\p{L}\p{N}+#.]+/gu, "-").replace(/^-+|-+$/g, "");
+
+// Applies fn to the prose of a markdown text, leaving code spans and fences alone.
+function mapProse(text, fn) {
+  return String(text || "").split(CODE_SPAN).map((part, i) => (i % 2 ? part : fn(part))).join("");
+}
+
+// Rewrites each {{term}} mark outside code: fn(term) returns what to draw.
+export const markTerms = (text, fn) => mapProse(text, (p) => p.replace(TERM_MARK, (_, t) => fn(t)));
+export const unmark = (text) => markTerms(text, (t) => t);
+
+// The marked terms of a text, in order, once each.
+export function markedTerms(text) {
+  const seen = new Map();
+  markTerms(text, (t) => { const id = termId(t); if (id && !seen.has(id)) seen.set(id, t); return t; });
+  return [...seen].map(([id, term]) => ({ id, term }));
+}
+
+// "- term: meaning" lines of a ▸ Terms block.
+function parseTermList(block) {
+  const out = [];
+  for (const line of String(block || "").split(/\r?\n/)) {
+    const m = line.match(/^\s*[-*•]\s*(.+?)\s*(?::|—|–| - )\s+(.+?)\s*$/);
+    if (!m) continue;
+    const term = m[1].replace(/[{}`*]/g, "").trim();
+    if (term) out.push({ id: termId(term), term, meaning: m[2] });
+  }
+  return out;
+}
+
+// Splits a reply into its layers. A reply without the markers is all story.
+export function splitLayers(text) {
+  let rest = String(text || "");
+  const h = rest.match(HINT_LINE);
+  const hint = h ? h[0].trim() : null;
+  if (h) rest = rest.replace(HINT_LINE, "");
+  let terms = [];
+  const tm = rest.match(TERMS_LINE);
+  if (tm) { terms = parseTermList(rest.slice(tm.index + tm[0].length)); rest = rest.slice(0, tm.index); }
+  let tech = "";
+  const te = rest.match(TECH_LINE);
+  if (te) { tech = rest.slice(te.index + te[0].length).trim(); rest = rest.slice(0, te.index); }
+  return { story: rest.trim(), tech, terms, hint };
+}
+
+// The part of a reply shown unfolded, the one the length check counts, marks removed.
+export function shownOf(text, lead = "story") {
+  const l = splitLayers(text);
+  return unmark(lead === "technical" && l.tech ? l.tech : l.story);
+}
+
+// About which row of a drawn markdown block a character index lands on.
+export function rowAt(text, index, columns) {
+  const cols = Math.max(20, columns || 80);
+  let row = 0;
+  for (const line of String(text).slice(0, index).split("\n").slice(0, -1)) row += Math.max(1, Math.ceil(line.length / cols));
+  const last = String(text).slice(0, index).split("\n").pop() || "";
+  return row + Math.floor(last.length / cols);
+}
+
 // ---------- shortcuts ----------
 
 export const HINT_LINE = /^[ \t]*▸[^\n]*"(en|tr)"[^\n]*$/m;

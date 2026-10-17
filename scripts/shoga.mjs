@@ -14,7 +14,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   parseDoc, avoidList, checkReply, describeIssues, isSevere,
-  matchCommand, riskAtLeast, entryText,
+  matchCommand, riskAtLeast, entryText, shownOf,
 } from "./lib/pure.mjs";
 import COMMANDS from "../data/commands.mjs";
 
@@ -185,6 +185,33 @@ const roleNames = (r) => r.roles.map((x) => x.meta.label || x.id).join(" + ");
 const primaryRole = (r) => r.roles[0].meta.label || r.roles[0].id;
 const extraRoles = (r) => r.roles.slice(1).map((x) => x.meta.label || x.id).join(", ");
 const isOff = (r, id) => r.s.enabled === false || sessionState(id).off;
+// glossary_hover is the 0.2.0 name of term_hints; either set to "off" turns the hints off.
+const termHints = (s) => s.term_hints !== "off" && s.glossary_hover !== "off";
+const offer = (r, label, key) => r.open.hint.replace("{other}", label).replace("{key}", key);
+// Which layer leads: "story" (technical folded), "technical" (story folded) or "technical-only".
+const leadOf = (s) => (["technical", "technical-only"].includes(s.layers) ? s.layers : "story");
+
+// Layout names by lead: with the display mod, then without (core/layers.md, "Layout").
+const LAYOUTS = {
+  story: ["story + technical folded", "story only"],
+  technical: ["technical + story folded", "technical, story on request"],
+  "technical-only": ["technical only", "technical only"],
+};
+
+// The layout line of the per-prompt reminder.
+function layout(r, id) {
+  const mod = modActive(id);
+  return ` Layout: ${LAYOUTS[leadOf(r.s)][mod ? 0 : 1]}${mod && termHints(r.s) ? ", term hints on" : ""}.`;
+}
+
+// core/layers.md with only the layouts this user's lead can get (a bullet names its layouts in backticks).
+function layersDoc(r) {
+  const names = LAYOUTS[leadOf(r.s)];
+  const [head, list = ""] = (readText(path.join(ROOT, "core", "layers.md")) || "").split(/(?=^## Layout)/m);
+  const kept = list.split(/^(?=- )/m).filter((b) => !b.startsWith("- ") || names.some((n) => b.split("\n")[0].includes(`\`${n}\``)));
+  return (head + kept.join(""))
+    .replace("{TECH_HINT}", offer(r, "Technical", "tech")).replace("{STORY_HINT}", offer(r, "Story", "story"));
+}
 const commandFloor = (s) => (s.explain_commands === "off" ? null : s.explain_commands === "caution" ? "caution" : "danger");
 
 // Settings the display mod reads (it has no Node; it reads this file).
@@ -196,7 +223,8 @@ function writeModState(r, id) {
     otherRtl: r.other.rtl, otherGuide: r.otherGuide,
     roles: r.roles.map((x) => x.id), primaryRole: primaryRole(r),
     explainCommands: r.s.explain_commands !== "off",
-    glossaryHover: r.s.glossary_hover === "on" || (r.s.glossary_hover !== "off" && !["dev", "devops"].includes(r.roles[0].id)),
+    termHints: termHints(r.s),
+    lead: leadOf(r.s),
     knownTerms: r.profile.known_terms,
     enabled: r.s.enabled !== false,
   };
@@ -215,6 +243,7 @@ function sessionStart(input) {
   const parts = [];
   parts.push(`<shoga-speaks>\nThe user has the Shoga-Speaks plugin on. Follow these rules for every reply in this session, including output from other skills, commands and agents. They change how you explain things, never what you do.`);
   parts.push(readText(path.join(ROOT, "core", "rules.md")) || "");
+  parts.push(layersDoc(r));
 
   const langLine = r.cliEnglish
     ? `Write chat replies in simple English${r.bilingual ? ` (the user's own language, ${r.mine.label}, is available on request)` : ""}.`
@@ -327,7 +356,7 @@ function prompt(input) {
       `Known terms: ${prof.known_terms.length} · Replies checked: ${checked}, with slips: ${slipped}`,
       r.found ? `Settings: ${[r.paths.team, r.paths.user, r.paths.local].filter((f) => fs.existsSync(f)).join(", ")}` : "Settings: plugin defaults (run /shoga-speaks:setup)",
       ...r.notes.map((n) => `Note: ${n}`),
-      `Shortcuts: "${r.bilingual ? r.otherKey : "en"}" other language · "??" simpler · "shoga simpler|deeper" · "shoga know <terms>" · "shoga off|on"`,
+      `Shortcuts: "${r.bilingual ? r.otherKey : "en"}" other language · "tech" / "story" the other layer · "??" simpler · "shoga simpler|deeper" · "shoga know <terms>" · "shoga off|on"`,
     ].join("\n"));
   }
 
@@ -336,13 +365,17 @@ function prompt(input) {
   let ctx;
   if (cmd === "??" || cmd === "shoga ??") {
     if (prof.level > -2) { prof.level -= 1; saveProfile(prof); }
-    ctx = `Shoga-Speaks: the user did not understand your previous reply. Explain the same thing again, simpler: shorter sentences, no jargon, one everyday example. Same language (${r.open.label}). No new work, no tool calls. From now on: ${LEVELS[String(prof.level)] || "use simple words"}`;
+    ctx = `Shoga-Speaks: the user did not understand your previous reply. Explain the same thing again, simpler: shorter sentences, no jargon, one everyday example. Same language (${r.open.label}) and layout. No new work, no tool calls. From now on: ${LEVELS[String(prof.level)] || "use simple words"}`;
+  } else if (cmd === "tech" || cmd === "story") {
+    const part = cmd === "tech" ? "technical part" : "story";
+    ctx = `Shoga-Speaks: the user typed "${cmd}". Give the ${part} of your previous explanation, as "The ${part}" describes it, in ${r.open.label}. No new work, no tool calls.`;
   } else if (r.bilingual && (cmd === "en" || cmd === "tr")) {
     const target = cmd === "en" ? r.english.label : r.mine.label;
     ctx = `Shoga-Speaks: the user typed "${raw}". Repeat your previous explanation in ${target}. Same content and length, simple words, no new work, no tool calls, no hint line at the end.`;
   } else {
     const lang = r.cliEnglish ? "simple English" : `${r.mine.label} (${r.lang.id}, ${r.script} script)`;
     ctx = `Shoga-Speaks reminder: reply in ${lang}; write for ${primaryRole(r)}${extraRoles(r) ? ` (${extraRoles(r)}: one line each at most)` : ""}; length ${s.length || "short"}. Point first, one idea per line, simple everyday words. Code, paths, commands and errors stay as-is.${r.hint ? ` If the reply explains something, end with: ${r.hint}` : ""}`;
+    ctx += layout(r, id);
     if (state.last_issues) ctx += ` Your last reply ${state.last_issues}. Avoid that.`;
   }
   if (state.last_issues) setSessionState(id, { last_issues: null });
@@ -386,7 +419,7 @@ function stop(input) {
   const text = lastAssistantText(input);
   if (!text) return;
 
-  const { issues } = checkFor(r, text);
+  const { issues } = checkFor(r, shownOf(text, leadOf(r.s)));
   const prof = loadProfile();
   prof.stats = { checked: (prof.stats.checked || 0) + 1, slipped: (prof.stats.slipped || 0) + (issues.length ? 1 : 0) };
   saveProfile(prof);

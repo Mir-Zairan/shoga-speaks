@@ -14,7 +14,8 @@ export type ModSettings = {
   roles: string[]
   primaryRole: string
   explainCommands: boolean
-  glossaryHover: boolean
+  termHints: boolean
+  lead: 'story' | 'technical' | 'technical-only'
   knownTerms: string[]
   enabled: boolean
 }
@@ -24,7 +25,9 @@ declare module 'claude-code' {
     'shoga-speaks': {
       open: Record<string, boolean>
       showAll: boolean
-      glossOpen: Record<string, boolean>
+      foldOpen: Record<string, boolean>
+      foldAll: boolean
+      card: Record<string, string>
     }
   }
 }

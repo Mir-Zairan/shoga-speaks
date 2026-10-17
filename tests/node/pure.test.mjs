@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { avoidList, checkReply, matchCommand, entryText, findTerms, parseDoc, HINT_LINE, isSevere } from "../../scripts/lib/pure.mjs";
+import { avoidList, checkReply, matchCommand, entryText, findTerms, parseDoc, HINT_LINE, isSevere, splitLayers, markedTerms, unmark, shownOf } from "../../scripts/lib/pure.mjs";
 
 const root = new URL("../../", import.meta.url);
 import commands from "../../data/commands.mjs";
@@ -57,4 +57,36 @@ test("hint line is recognised in every language file", () => {
   assert.match('Text\n▸ English: "en" likhein', HINT_LINE);
   assert.match('Text\n▸ Roman-Urdu: type "tr"', HINT_LINE);
   assert.doesNotMatch("▸ just an arrow", HINT_LINE);
+});
+
+const LAYERED = `Page slow tha. {{batching}} se ab 6x tez hai.
+
+▸ Technical
+\`OrderList.load()\` ab ek {{batching}} query chalata hai, aur ek {{CTE}}.
+
+▸ Terms
+- batching: bahut saare kaam ek hi baar mein karna
+- \`CTE\` — query ke andar ek naam wala hissa
+
+▸ English: "en" likhein`;
+
+test("splitLayers separates story, technical part, term meanings and the language line", () => {
+  const l = splitLayers(LAYERED);
+  assert.equal(l.story, "Page slow tha. {{batching}} se ab 6x tez hai.");
+  assert.match(l.tech, /^`OrderList\.load\(\)` ab ek/);
+  assert.doesNotMatch(l.tech, /Terms|English/);
+  assert.deepEqual(l.terms.map((t) => [t.id, t.meaning]), [["batching", "bahut saare kaam ek hi baar mein karna"], ["cte", "query ke andar ek naam wala hissa"]]);
+  assert.equal(l.hint, '▸ English: "en" likhein');
+  assert.deepEqual(splitLayers("Sirf story.").tech, "");
+});
+
+test("term marks: found once each, never inside code, removed for drawing and counting", () => {
+  assert.deepEqual(markedTerms(LAYERED).map((t) => t.id), ["batching", "cte"]);
+  const code = "Use {{index}} here: `{{x}}` and\n```\n{{ name }} {{y}}\n```";
+  assert.deepEqual(markedTerms(code).map((t) => t.id), ["index"]);
+  assert.equal(unmark(code), "Use index here: `{{x}}` and\n```\n{{ name }} {{y}}\n```");
+  assert.equal(unmark("Jinja {{ name }} stays"), "Jinja {{ name }} stays");
+  assert.equal(shownOf(LAYERED), "Page slow tha. batching se ab 6x tez hai.");
+  assert.match(shownOf(LAYERED, "technical"), /^`OrderList\.load\(\)` ab ek batching query/);
+  assert.equal(shownOf("Sirf technical jawab.", "technical"), "Sirf technical jawab.");
 });

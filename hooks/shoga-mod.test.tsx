@@ -4,7 +4,7 @@ const URDU = {
   language: 'urdu', script: 'roman', langKey: 'urdu:roman', mineKey: 'urdu:roman',
   bilingual: true, cliEnglish: false, openLabel: 'Roman-Urdu', otherLabel: 'English', otherKey: 'en',
   otherRtl: false, otherGuide: 'Plain English.', roles: ['qa'], primaryRole: 'QA / Tester',
-  explainCommands: true, glossaryHover: true, knownTerms: [], enabled: true,
+  explainCommands: true, termHints: true, lead: 'story', knownTerms: [], enabled: true,
 }
 const ENGLISH_PO = { ...URDU, language: 'english', langKey: 'english', bilingual: false, openLabel: 'English', primaryRole: 'Product Owner' }
 
@@ -126,4 +126,107 @@ test('a risky shell command gets a plain line under the approval dialog', async 
   on('tool.call', async () => ({ result: { stdout: '', stderr: '', interrupted: false } }) as any)
   await $.tool.call({ tool: 'Bash', command: 'rm -rf build' } as any)
   expect(notices.join(' ')).toMatch(/hamesha ke liye delete/)
+})
+
+const LAYERED = `Orders page slow tha kyunke har order ke liye alag query chalti thi. Ab {{batching}} se sab ek saath aata hai, page 6x tez hai.
+
+▸ Technical
+\`OrderList.load()\` (\`src/orders/list.ts:42\`) ab customers ko ek {{batching}} query mein laata hai. \`{{not-a-mark}}\` code hai.
+
+▸ Terms
+- batching: bahut saare kaam ek hi baar mein karna
+
+▸ English: "en" likhein`
+
+test('the technical part is folded; a press unfolds it; marks never show as braces', async ($, on) => {
+  world(on, URDU)
+  const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', ...row(LAYERED) })
+  expect(await ui.find({ type: 'Markdown', text: /Orders page slow tha.*Ab batching se/s })).toBeDefined()
+  expect(await ui.find({ type: 'Markdown', text: /\{\{batching/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Markdown', text: /OrderList\.load/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Markdown', text: /▸ Terms|ek hi baar mein/ })).toBeUndefined()
+  const btn = await ui.find({ type: 'Button', text: /Technical/ })
+  await ui.press({ key: btn!.key! })
+  expect(await ui.find({ type: 'Markdown', text: /ek batching query.*`\{\{not-a-mark\}\}`/s })).toBeDefined()
+  await ui.unmount()
+})
+
+test('typing "tech" unfolds every technical part with no turn sent to Claude', async ($, on) => {
+  world(on, URDU)
+  const r: any = await $.prompt.submit({ text: 'tech' } as any)
+  expect(r.drop).toMatch(/Technical part shown/)
+  const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', ...row(LAYERED) })
+  expect(await ui.find({ type: 'Markdown', text: /OrderList\.load/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('fullscreen: a marked term is a link; a click opens its card over the reply, a second click closes it', async ($, on) => {
+  world(on, URDU)
+  const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', viewport: { columns: 100, rows: 40, isFullscreen: true }, ...row(LAYERED) })
+  const story = await ui.find({ type: 'Markdown', text: /\[batching\]\(https:\/\/shoga\.invalid\/term\/batching\)/ })
+  expect(story).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /ek hi baar mein/ })).toBeUndefined()
+  await ui.press({ key: story!.key!, link: { href: 'https://shoga.invalid/term/batching' } })
+  expect(await ui.find({ type: 'Text', text: /batching: bahut saare kaam/ })).toBeDefined()
+  await ui.press({ key: story!.key!, link: { href: 'https://shoga.invalid/term/batching' } })
+  expect(await ui.find({ type: 'Text', text: /ek hi baar mein/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('main screen: marked terms become chips; a press pins the card, its ✕ closes it', async ($, on) => {
+  world(on, URDU)
+  const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', viewport: { columns: 100, rows: 40, isFullscreen: false }, ...row(LAYERED) })
+  expect(await ui.find({ type: 'Markdown', text: /shoga\.invalid/ })).toBeUndefined()
+  const chip = await ui.find({ type: 'Button', text: /^batching$/ })
+  expect(chip).toBeDefined()
+  await ui.press({ key: chip!.key! })
+  const close = await ui.find({ type: 'Button', text: '✕' })
+  expect(close).toBeDefined()
+  await ui.press({ key: close!.key! })
+  expect(await ui.find({ type: 'Button', text: '✕' })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('term hints off: no chips or links, marks still removed', async ($, on) => {
+  world(on, { ...URDU, termHints: false })
+  const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'desktop', ...row(LAYERED) })
+  expect(await ui.find({ type: 'Button', text: /^batching$/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Markdown', text: /shoga\.invalid|\{\{batching/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('the other language is translated from the story alone, without marks', async ($, on) => {
+  world(on, URDU)
+  let sent = ''
+  on('model.complete', async (_$: any, e: any) => { sent = e.prompt; return { value: { isAnswered: true, text: 'The orders page was slow.', usage: {} } } })
+  const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', ...row(LAYERED) })
+  const btn = await ui.find({ type: 'Button', text: /English/ })
+  await ui.press({ key: btn!.key! })
+  await ui.redraw()
+  expect(sent).toMatch(/Ab batching se/)
+  expect(sent).not.toMatch(/\{\{|OrderList|Terms/)
+  await ui.unmount()
+})
+
+test('technical first: the technical part is shown, the story is folded, "story" unfolds them all', async ($, on) => {
+  world(on, { ...URDU, lead: 'technical' })
+  let ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', ...row(LAYERED) })
+  expect(await ui.find({ type: 'Markdown', text: /OrderList\.load/ })).toBeDefined()
+  expect(await ui.find({ type: 'Markdown', text: /Orders page slow tha/ })).toBeUndefined()
+  const btn = await ui.find({ type: 'Button', text: /Story/ })
+  await ui.press({ key: btn!.key! })
+  expect(await ui.find({ type: 'Markdown', text: /Orders page slow tha/ })).toBeDefined()
+  await ui.unmount()
+  const r: any = await $.prompt.submit({ text: 'story' } as any)
+  expect(r.drop).toMatch(/Story shown/)
+})
+
+test('technical only: a reply with no story is drawn as one part', async ($, on) => {
+  world(on, { ...URDU, lead: 'technical-only' })
+  const reply = '`OrderList.load()` ek query per order chalata hai, {{N+1}} problem.\n\n▸ Terms\n- N+1: har item ke liye alag query\n\n▸ English: "en" likhein'
+  const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', ...row(reply) })
+  expect(await ui.find({ type: 'Markdown', text: /ek query per order chalata hai, N\+1 problem/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', text: /Story|Technical/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Button', text: /^N\+1$/ })).toBeDefined()
+  await ui.unmount()
 })

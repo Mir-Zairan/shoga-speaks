@@ -36,7 +36,7 @@ test("session start: context, status line and state for the mod", () => {
   const st = JSON.parse(fs.readFileSync(path.join(shoga, "state", "latest.json"), "utf8"));
   assert.equal(st.otherLabel, "English");
   assert.equal(st.langKey, "urdu:roman");
-  assert.equal(st.glossaryHover, true);
+  assert.equal(st.termHints, true);
 });
 
 test("?? lowers the level and asks for a simpler re-explanation", () => {
@@ -111,4 +111,51 @@ test("shoga off silences every hook for the session", () => {
   assert.equal(run("prompt", { prompt: "hello" }), null);
   assert.equal(run("pre-tool", { tool_name: "Bash", tool_input: { command: "rm -rf /tmp/x" } }), null);
   assert.equal(run("stop", { last_assistant_message: "masla ".repeat(30) }), null);
+});
+
+test("layers: rules at session start; the reminder says folded with the mod, plain without", () => {
+  settings(URDU_QA);
+  const ctx = run("session-start", { source: "startup" }).hookSpecificOutput.additionalContext;
+  assert.match(ctx, /# Two layers/);
+  assert.match(ctx, /end with the line\s+▸ Technical: "tech" likhein/);
+  assert.match(ctx, /types "tech" or "story"/);
+  assert.doesNotMatch(ctx, /technical, story on request/);
+  assert.ok(ctx.length < 14000, `context is ${ctx.length} chars`);
+  assert.match(run("prompt", { prompt: "next" }).hookSpecificOutput.additionalContext, /Layout: story only\./);
+  fs.writeFileSync(path.join(shoga, "state", "s1.mod"), "1");
+  assert.match(run("prompt", { prompt: "next" }).hookSpecificOutput.additionalContext, /Layout: story \+ technical folded, term hints on\./);
+  settings({ ...URDU_QA, term_hints: "off" });
+  assert.match(run("prompt", { prompt: "next" }).hookSpecificOutput.additionalContext, /Layout: story \+ technical folded\./);
+  settings({ ...URDU_QA, glossary_hover: "off" });
+  run("session-start", { source: "startup" });
+  assert.equal(JSON.parse(fs.readFileSync(path.join(shoga, "state", "latest.json"), "utf8")).termHints, false);
+});
+
+test("tech asks Claude for the technical part when the mod is not there", () => {
+  settings(URDU_QA);
+  assert.match(run("prompt", { prompt: "tech" }).hookSpecificOutput.additionalContext, /technical part of your previous explanation/);
+});
+
+test("stop: the length check counts the story, not the folded technical part", () => {
+  settings(URDU_QA);
+  const reply = "Page ab tez hai aur koi problem nahi. Fix chhota hai aur tests pass hain.\n\n▸ Technical\n" + "Yeh line technical detail deti hai aur file ka naam batati hai. ".repeat(40);
+  run("stop", { last_assistant_message: reply });
+  assert.doesNotMatch(run("prompt", { prompt: "next" }).hookSpecificOutput.additionalContext, /Your last reply/);
+});
+
+test("layers setting: technical first, technical only, and the story on request", () => {
+  settings({ ...URDU_QA, layers: "technical" });
+  assert.match(run("session-start", { source: "startup" }).hookSpecificOutput.additionalContext, /end with the line ▸ Story: "story" likhein/);
+  assert.match(run("prompt", { prompt: "next" }).hookSpecificOutput.additionalContext, /Layout: technical, story on request\./);
+  fs.writeFileSync(path.join(shoga, "state", "s1.mod"), "1");
+  assert.match(run("prompt", { prompt: "next" }).hookSpecificOutput.additionalContext, /Layout: technical \+ story folded, term hints on\./);
+  assert.match(run("prompt", { prompt: "story" }).hookSpecificOutput.additionalContext, /Give the story of your previous explanation/);
+  settings({ ...URDU_QA, layers: "technical-only" });
+  assert.match(run("prompt", { prompt: "next" }).hookSpecificOutput.additionalContext, /Layout: technical only, term hints on\./);
+});
+
+test("every role says what its technical part holds", () => {
+  for (const f of fs.readdirSync(new URL("../../roles/", import.meta.url))) {
+    assert.match(fs.readFileSync(new URL(`../../roles/${f}`, import.meta.url), "utf8"), /^Technical part: .+/m, f);
+  }
 });

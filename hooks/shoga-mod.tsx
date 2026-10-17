@@ -3,23 +3,34 @@
 //   - the "▸ English" line under a reply becomes a toggle; the other language is
 //     translated on demand by a small model and folded away until asked for
 //   - "en" / "tr" typed alone unfolds or folds every reply, with no Claude turn
+//   - a reply's story and technical part: the one the settings lead with is shown, the
+//     other folded away; "tech" (or "story") unfolds or folds them all
+//   - {{terms}} Claude marked are highlighted; a click opens a short card over the reply
 //   - shell commands get a plain-language line under the approval dialog and the tool row
-//   - technical terms in a reply get a footer; hover or press shows a simple meaning
 //   - a status line shows the active language and role
 
 import { atom, read, update } from 'claude-code'
 import type { Register, EngineInterface } from 'claude-code'
-import { HINT_LINE, idOf, matchCommand, entryText, findTerms, RISK_MARK } from '../scripts/lib/pure.mjs'
+import {
+  idOf, matchCommand, entryText, findTerms, RISK_MARK,
+  splitLayers, markTerms, markedTerms, unmark, termId, rowAt,
+} from '../scripts/lib/pure.mjs'
 import COMMANDS from '../data/commands.mjs'
 import GLOSSARY from '../data/glossary.mjs'
 import type { ModSettings } from '../types'
 
 const open = atom({ plugin: 'shoga-speaks', key: 'open' } as const, {} as Record<string, boolean>)
 const showAll = atom({ plugin: 'shoga-speaks', key: 'showAll' } as const, false)
-const glossOpen = atom({ plugin: 'shoga-speaks', key: 'glossOpen' } as const, {} as Record<string, boolean>)
+const foldOpen = atom({ plugin: 'shoga-speaks', key: 'foldOpen' } as const, {} as Record<string, boolean>)
+const foldAll = atom({ plugin: 'shoga-speaks', key: 'foldAll' } as const, false)
+// The term card open on each reply: "story:<term>", "tech:<term>", "chip:<term>" or "".
+const card = atom({ plugin: 'shoga-speaks', key: 'card' } as const, {} as Record<string, string>)
 
 const TRANSLATE_MODEL = 'haiku'
 const PENDING = '…'
+// Term links point here; .invalid never resolves, so a modified click opens nothing real.
+const TERM_URL = 'https://shoga.invalid/term/'
+const MAX_TERMS = 6
 
 type $ = EngineInterface
 
@@ -127,6 +138,35 @@ async function glossMeanings($: $, ids: string[], st: ModSettings): Promise<Reco
   return out
 }
 
+type Term = { id: string; term: string; meaning: string; marked: boolean }
+
+// The terms a reply explains: the ones Claude marked, with the meaning it listed or the
+// glossary's; for a reply with no marks, the glossary terms its story uses.
+async function termsOf($: $, story: string, tech: string, listed: { id: string; meaning: string }[], st: ModSettings): Promise<Term[]> {
+  const known = new Set((st.knownTerms || []).map(termId))
+  const marked = markedTerms(`${story}\n${tech}`).filter((m) => !known.has(m.id))
+  if (!marked.length) {
+    const found = findTerms(story, GLOSSARY, st.knownTerms || [])
+    const meanings = await glossMeanings($, found.map((t: { id: string }) => t.id), st)
+    return found.map((t: { id: string; term: string }) => ({ id: t.id, term: t.term, meaning: meanings[t.id] ?? '', marked: false }))
+  }
+  const given = new Map(listed.map((t) => [t.id, t.meaning]))
+  const fromGlossary = new Map<string, string>()
+  for (const m of marked) {
+    if (given.has(m.id)) continue
+    const g = GLOSSARY.find((x: { id: string; term: string; aliases?: string[] }) =>
+      [x.id, x.term, ...(x.aliases || [])].some((a) => termId(a) === m.id))
+    if (g) fromGlossary.set(m.id, g.id)
+  }
+  const meanings = fromGlossary.size ? await glossMeanings($, [...fromGlossary.values()], st) : {}
+  const out: Term[] = []
+  for (const m of marked) {
+    const meaning = given.get(m.id) ?? meanings[fromGlossary.get(m.id) ?? '']
+    if (meaning) out.push({ id: m.id, term: m.term, meaning, marked: true })
+  }
+  return out.slice(0, MAX_TERMS)
+}
+
 // ---------- hooks ----------
 
 export const register: Register = (on) => {
@@ -147,6 +187,13 @@ export const register: Register = (on) => {
     if (isOn(st) && st.bilingual && (cmd === 'en' || cmd === 'tr')) {
       const now = await update($, showAll, (v) => !v)
       return { drop: now ? `🦜 ${st.otherLabel} shown under each reply. Type "${cmd}" again to fold it.` : `🦜 ${st.otherLabel} folded away.` }
+    }
+    // The keyword of the folded layer; the other one goes on to Claude (core/layers.md).
+    const folded = st?.lead === 'technical' ? 'story' : st?.lead === 'technical-only' ? null : 'tech'
+    if (isOn(st) && folded && cmd === folded) {
+      const now = await update($, foldAll, (v) => !v)
+      const what = folded === 'tech' ? 'Technical part' : 'Story'
+      return { drop: now ? `🦜 ${what} shown under each reply. Type "${cmd}" again to fold it.` : `🦜 ${what} folded away.` }
     }
     return next(e)
   })
@@ -186,20 +233,105 @@ export const register: Register = (on) => {
     if (!isOn(st)) return next(e)
 
     const text = e.props.text
-    const hasHint = st.bilingual && HINT_LINE.test(text)
-    const terms = st.glossaryHover ? findTerms(text, GLOSSARY, st.knownTerms || []) : []
-    if (!hasHint && !terms.length) return next(e)
+    const { story, tech, terms: listed, hint } = splitLayers(text)
+    const hasHint = st.bilingual && !!hint
+    const hasMarks = markedTerms(`${story}\n${tech}`).length > 0
+    const terms = st.termHints ? await termsOf($, story, tech, listed, st) : []
+    if (!hasHint && !tech && !hasMarks && !terms.length) return next(e)
 
     const id = idOf(text)
-    const main = hasHint ? text.replace(HINT_LINE, '').trimEnd() : text
     const { Box, Text, Markdown, Button } = $.ui.resolve(e)
+    const cols = e.viewport?.columns ?? 80
+    const width = Math.max(20, Math.min(64, cols - 4))
+    // Links take a plain click on desktop, VS Code and the fullscreen terminal. On the
+    // terminal's main screen a click on a link opens it, so terms become chips there.
+    const inline = e.surface !== 'terminal' || e.viewport?.isFullscreen === true
+    const byId = new Map(terms.map((t) => [t.id, t]))
+    const pinned = (await read($, card))[id] ?? ''
+    const pin = (where: string) => update($, card, (c) => ({ ...c, [id]: c[id] === where ? '' : where }))
+    const cardRows = (t: Term) => Math.ceil((t.term.length + t.meaning.length + 2) / (width - 4)) + 2
+
+    // A term's card, drawn over the reply; nothing below it moves.
+    const termCard = (t: Term, top: number, left: number) => (
+      <Box key={`shoga-card-${id}`} position="absolute" top={top} left={left} width={width} borderStyle="round" paddingX={1} flexDirection="row">
+        <Box flexGrow={1} flexShrink={1}><Text>{t.term}: {t.meaning}</Text></Box>
+        <Button key={`shoga-card-x-${id}`} plain dimColor label="✕" onPress={() => update($, card, (c) => ({ ...c, [id]: '' }))} />
+      </Box>
+    )
+
+    // The story or the technical part, its marked terms as links where a click lands.
+    const part = (name: 'story' | 'tech', md: string) => {
+      if (!inline || !terms.some((t) => t.marked)) return <Markdown key={`shoga-${name}-${id}`} text={unmark(md)} />
+      const drawn = markTerms(md, (t) => (byId.has(termId(t)) ? `[${t}](${TERM_URL}${termId(t)})` : t))
+      const shown = pinned.startsWith(`${name}:`) ? byId.get(pinned.slice(name.length + 1)) : undefined
+      const at = shown ? drawn.indexOf(`](${TERM_URL}${shown.id})`) : -1
+      return (
+        <Box flexDirection="column">
+          <Markdown
+            key={`shoga-${name}-${id}`}
+            text={drawn}
+            pressableLinks={terms.map((t) => TERM_URL + t.id)}
+            onLinkPress={(link) => {
+              const tid = link.href.slice(TERM_URL.length)
+              if (byId.has(tid)) void pin(`${name}:${tid}`)
+            }}
+          />
+          {shown && at >= 0 ? termCard(shown, rowAt(drawn, at, cols) + 1, 2) : null}
+        </Box>
+      )
+    }
+
+    // Terms with no link in the text: chips under the story. Hover shows the card, a press pins it.
+    let chips = null
+    const chipTerms = inline ? terms.filter((t) => !t.marked) : terms
+    if (chipTerms.length) {
+      chips = (
+        <Box flexDirection="row" flexWrap="wrap">
+          <Text dimColor>📖 </Text>
+          {chipTerms.map((t) => (
+            <Box key={`shoga-g-${id}-${t.id}`} marginRight={2}>
+              <Button key={`shoga-gb-${id}-${t.id}`} plain dimColor label={t.term} onPress={() => pin(`chip:${t.id}`)} />
+              {pinned === `chip:${t.id}`
+                ? termCard(t, -cardRows(t), 0)
+                : (
+                  <Box position="absolute" top={-cardRows(t)} left={0} width={width} display="none" hover={{ display: 'flex' }} borderStyle="round" paddingX={1}>
+                    <Text>{t.term}: {t.meaning}</Text>
+                  </Box>
+                )}
+            </Box>
+          ))}
+        </Box>
+      )
+    }
+
+    // The layer the settings lead with is shown; the other is folded until pressed, or
+    // while "tech" / "story" is on.
+    const techFirst = st.lead === 'technical' && !!tech
+    const [lead, rest] = techFirst ? [tech, story] : [story, tech]
+    let fold = null
+    if (rest) {
+      const isOpen = (await read($, foldAll)) || (await read($, foldOpen))[id] === true
+      fold = (
+        <Box flexDirection="column">
+          <Button
+            key={`shoga-fold-${id}`}
+            plain
+            dimColor
+            label={`${isOpen ? '▾' : '▸'} ${techFirst ? 'Story' : 'Technical'}`}
+            onPress={() => update($, foldOpen, (o) => ({ ...o, [id]: !o[id] }))}
+          />
+          {isOpen ? part(techFirst ? 'story' : 'tech', rest) : null}
+        </Box>
+      )
+    }
 
     // Other language: folded until pressed, or while "en"/"tr" is on.
     let other = null
     if (hasHint) {
+      const plain = unmark(lead)
       const isOpen = (await read($, showAll)) || (await read($, open))[id] === true
       const done = translations.get(id)
-      if (isOpen && done === undefined) translate($, id, main, st)
+      if (isOpen && done === undefined) translate($, id, plain, st)
       other = (
         <Box flexDirection="column">
           <Button
@@ -209,7 +341,7 @@ export const register: Register = (on) => {
             label={`${isOpen ? '▾' : '▸'} ${st.otherLabel}`}
             onPress={async () => {
               const now = await update($, open, (o) => ({ ...o, [id]: !o[id] }))
-              if (now[id]) translate($, id, main, st)
+              if (now[id]) translate($, id, plain, st)
             }}
           />
           {isOpen ? (
@@ -221,41 +353,11 @@ export const register: Register = (on) => {
       )
     }
 
-    // Glossary footer: hover shows a card, a press shows the meaning inline.
-    let glossary = null
-    if (terms.length) {
-      const meanings = await glossMeanings($, terms.map((t) => t.id), st)
-      const shown = await read($, glossOpen)
-      glossary = (
-        <Box flexDirection="column">
-          <Box flexDirection="row">
-            <Text dimColor>📖 </Text>
-            {terms.map((t) => (
-              <Box key={`shoga-g-${id}-${t.id}`} marginRight={2}>
-                <Button
-                  key={`shoga-gb-${id}-${t.id}`}
-                  plain
-                  dimColor
-                  label={t.term}
-                  onPress={() => update($, glossOpen, (o) => ({ ...o, [`${id}:${t.id}`]: !o[`${id}:${t.id}`] }))}
-                />
-                <Box position="absolute" top={-3} left={0} display="none" hover={{ display: 'flex' }} borderStyle="round" paddingX={1}>
-                  <Text>{t.term}: {meanings[t.id]}</Text>
-                </Box>
-              </Box>
-            ))}
-          </Box>
-          {terms.filter((t) => shown[`${id}:${t.id}`]).map((t) => (
-            <Text key={`shoga-gm-${id}-${t.id}`} dimColor>  {t.term}: {meanings[t.id]}</Text>
-          ))}
-        </Box>
-      )
-    }
-
     return (
       <Box flexDirection="column">
-        <Markdown text={main} />
-        {glossary}
+        {part(techFirst ? 'tech' : 'story', lead)}
+        {chips}
+        {fold}
         {other}
       </Box>
     )

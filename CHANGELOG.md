@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **Story first, tech folded**: replies start with the plain story for your role; the technical part, in full sentences and with what your role checks (code for Dev, repro steps for QA, scope for PO …), is folded under `▸ Technical`. `tech` unfolds every one (without the display mod, it asks Claude for it).
+- Setting `layers`: `story` (default), `technical` (technical part first, story folded, `story` unfolds it) or `technical-only`.
+- Rule: **seedhi baat, no bakwas**, straight to the point, nothing extra.
+- **Term hints** replace the hover glossary: Claude marks up to 5 words you may not know and gives their meaning here; a click opens a card over the reply instead of a new line. Setting `term_hints` (`on` by default, for every role).
+- The length check counts the story only.
+
 ## 0.2.0
 
 - **Display mod** (Claude Code 2.1.287+): fold and unfold the other language under each reply, translated on demand; `en` / `tr` without a Claude turn; plain-language lines under approval dialogs and tool rows; hover glossary; status line.

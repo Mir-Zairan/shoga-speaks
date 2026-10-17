@@ -48,17 +48,19 @@ Setup asks for your language, script and roles. You need Node.js 18 or later. Th
 | ✅ **Quality check** | Each reply is checked for hard words, mixed scripts and length | any version |
 | 📈 **Learns your level** | `??` gives a simpler version; terms you know stop being explained | any version |
 | 🔁 **Fold or unfold the other language** | Press `▸ English` under a reply, or type `en` | 2.1.287+ |
-| 📖 **Hover glossary** | Terms like *N+1* or *migration* show a one-line meaning | 2.1.287+ |
+| 🧩 **Story first, tech folded** | The answer in plain words; the details for your role sit under `▸ Technical` until you open it. Or the other way round, or technical only (`layers`) | 2.1.287+ (`tech` on older) |
+| 📖 **Term hints** | Words like *idempotent* or a project name are highlighted; a click opens a one-line card over the reply | 2.1.287+ |
 | 💬 **Bilingual PR comments** | English on GitHub, your language folded underneath | any version |
 | 📄 **Explainer pages** | `/shoga-speaks:page PR 482 for QA` gives a one-page summary with a language switch | any version |
 
 ## Shortcuts
 
-Type these as the whole prompt. None of them uses a Claude turn, except `??` and the language shortcuts on Claude Code versions without the display mod.
+Type these as the whole prompt. None of them uses a Claude turn, except `??`, and `tech`, `story` and the language shortcuts on Claude Code versions without the display mod.
 
 | Type | Does |
 |---|---|
 | `en` / `tr` | Show the last answer in English / in your language |
+| `tech` / `story` | Unfold every folded technical part / story (without the display mod: ask for it) |
 | `??` | “I didn't get that”: explain it simpler, and keep it simpler |
 | `shoga simpler` / `shoga deeper` | Change your level (−2 to +2) |
 | `shoga know N+1, migration` | Stop explaining these terms |

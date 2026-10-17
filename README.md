@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.svg" width="100%" alt="Shoga the parrot says one message each to a developer, a QA tester and a product owner, first in Roman-Urdu, then in Dutch, then in English.">
+  <img src="assets/banner.svg" width="100%" alt="A question is typed into Claude Code: why is the orders page slow? The answer spills out as a tangled knot of thread covered in jargon. Shoga the parrot catches the loose end and pulls it straight into one plain line, told for each role: a developer in Roman-Urdu, a QA tester in Dutch and a product owner in English. The jargon folds into a Technical tag, which then opens into a card with the same details in order. The line becomes the underline of Shoga-Speaks, with the motto Seedhi baat, no bakwas: straight talk, no nonsense.">
 </p>
 
 <p align="center">

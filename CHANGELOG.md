@@ -7,6 +7,7 @@
 - Rule: **seedhi baat, no bakwas**, straight to the point, nothing extra.
 - **Term hints** replace the hover glossary: Claude marks up to 5 words you may not know and gives their meaning here; a click opens a card over the reply instead of a new line. Setting `term_hints` (`on` by default, for every role).
 - The length check counts the story only.
+- New banner: one question typed into Claude Code (“why is the orders page slow?”) gets a knot of jargon as its answer; Shoga pulls it into one straight line with a plain story for Dev (Roman-Urdu), QA (Dutch) and PO (English), folds the jargon into `▸ Technical`, opens it as a card, explains one term, and ends on the motto in Roman-Urdu and English. Timed for reading (a 91 s loop); a still under reduced motion. Pure SVG, 175 KB. The logo is Shoga on a small terminal, with a bold head mark at small sizes (7 KB). Social preview 1280×640. Built by `assets/src/banner.py` (banner, `--png` for the social preview) and `assets/src/build.py` (logo, `--vendor-fonts`) from subsetted fonts vendored in `assets/src/fonts/`.
 
 ## 0.2.0
 

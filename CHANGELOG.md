@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
 - **Story first, tech folded**: replies start with the plain story for your role; the technical part, in full sentences and with what your role checks (code for Dev, repro steps for QA, scope for PO …), is folded under `▸ Technical`. `tech` unfolds every one (without the display mod, it asks Claude for it).
 - Setting `layers`: `story` (default), `technical` (technical part first, story folded, `story` unfolds it) or `technical-only`.

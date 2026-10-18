@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.svg" width="100%" alt="A question is typed into Claude Code: why is the orders page slow? The answer spills out as a tangled knot of thread covered in jargon. Shoga the parrot catches the loose end and pulls it straight into one plain line, told for each role: a developer in Roman-Urdu, a QA tester in Dutch and a product owner in English. The jargon folds into a Technical tag, which then opens into a card with the same details in order. The line becomes the underline of Shoga-Speaks, with the motto Seedhi baat, no bakwas: straight talk, no nonsense.">
+  <img src="assets/banner.svg" width="100%" alt="A Claude Code window. A developer, a QA tester, a product owner and a support agent each ask about the same payment bug in their own language: Roman-Urdu, English, Dutch and Hinglish. Without Shoga-Speaks the answer is a 400-word wall of jargon. Shoga the parakeet flies over from the logo and flips the Shoga-Speaks switch on, and the answer becomes two plain lines in the asker's language: a highlighted term is clicked to show its meaning, and the technical part is folded under Technical. Beside it: Claude Code, explained for you. Seedhi baat, no bakwas: straight talk, no nonsense.">
 </p>
 
 <p align="center">

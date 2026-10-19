@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Mir-Zairan/shoga-speaks/releases"><img src="https://img.shields.io/badge/version-0.3.0-3BB273" alt="Version 0.3.0"></a>
+  <a href="https://github.com/Mir-Zairan/shoga-speaks/releases"><img src="https://img.shields.io/badge/version-0.3.1-3BB273" alt="Version 0.3.1"></a>
   <img src="https://img.shields.io/badge/Claude%20Code-plugin-0B2E2B" alt="Claude Code plugin">
   <img src="https://img.shields.io/badge/languages-4-2C7DA0" alt="4 languages">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT license"></a>

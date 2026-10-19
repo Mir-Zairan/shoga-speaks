@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1
 
 - **Term hints sit inside the answer.** On the terminal the term is underlined in place and its card opens on hover, over the reply, on a solid background that no longer clips; desktop, VS Code and mobile open it with a click. The footer of term chips is gone.
 - Terms Claude only listed under `▸ Terms` are now found in the text and highlighted; listed terms that are not in the reply are dropped.

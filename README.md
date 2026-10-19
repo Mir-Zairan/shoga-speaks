@@ -4,7 +4,7 @@
 
 <p align="center">
   <b>A Claude Code plugin that explains everything in your language, your script and for your role.</b><br>
-  Short, simple, and only the jargon you already know.
+  <i>Seedhi baat, no bakwas.</i> Straight talk, no nonsense.
 </p>
 
 <p align="center">
@@ -18,14 +18,17 @@
 
 Claude Code answers in developer English. If you are a QA tester, product owner or project manager, or you think in **Urdu, Hindi or Dutch**, that costs focus. **Shoga-Speaks** (*shoga* is Kashmiri for parrot) makes every answer land the first time:
 
-> **You** (Product Owner, Roman-Urdu): *Is this PR okay to release?*
+> **You** (Product Owner, Roman-Urdu): *Kya yeh PR release ho sakta hai?*
 >
 > **Release mat karein.** Do problems hain: ek security risk, ek slow page.
-> - Customer ka `id` seedha query mein ja raha hai. Data leak ho sakta hai.
-> - 500 orders pe page bohat slow hoga.
+> - Ek customer doosre customers ka data dekh sakta hai (<ins>SQL injection</ins>).
+> - 500 orders wale customer ke liye page bahut slow hoga.
 >
 > **Aap ka decision:** fix hone tak release hold karein.
-> ▸ English
+>
+> ▸ Technical · ▸ English
+
+The technical detail stays folded until you open it, and the underlined term shows its meaning when you hover over it.
 
 ## Install
 
@@ -49,7 +52,7 @@ Setup asks for your language, script and roles. You need Node.js 18 or later. Th
 | 📈 **Learns your level** | `huh` gives a simpler version; terms you know stop being explained | any version |
 | 🔁 **Fold or unfold the other language** | Press `▸ English` under a reply, or type `en` | 2.1.287+ |
 | 🧩 **Story first, tech folded** | The answer in plain words; the details for your role sit under `▸ Technical` until you open it. Or the other way round, or technical only (`layers`) | 2.1.287+ (`tech` on older) |
-| 📖 **Term hints** | Words like *idempotent* or a project name are highlighted; a click opens a one-line card over the reply | 2.1.287+ |
+| 📖 **Term hints** | Technical terms like *idempotency key* or a project name are underlined in the answer; hover for a one-line meaning (click on desktop and VS Code) | 2.1.287+ |
 | 💬 **Bilingual PR comments** | English on GitHub, your language folded underneath | any version |
 | 📄 **Explainer pages** | `/shoga-speaks:page PR 482 for QA` gives a one-page summary with a language switch | any version |
 

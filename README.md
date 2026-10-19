@@ -46,7 +46,7 @@ Setup asks for your language, script and roles. You need Node.js 18 or later. Th
 | ⚠️ **Plain-language approvals** | `rm -rf build` → *“These files are deleted for good.”* | any version |
 | 🧪 **Failures explained** | A failing test or build gets one plain line for your role first | any version |
 | ✅ **Quality check** | Each reply is checked for hard words, mixed scripts and length | any version |
-| 📈 **Learns your level** | `??` gives a simpler version; terms you know stop being explained | any version |
+| 📈 **Learns your level** | `huh` gives a simpler version; terms you know stop being explained | any version |
 | 🔁 **Fold or unfold the other language** | Press `▸ English` under a reply, or type `en` | 2.1.287+ |
 | 🧩 **Story first, tech folded** | The answer in plain words; the details for your role sit under `▸ Technical` until you open it. Or the other way round, or technical only (`layers`) | 2.1.287+ (`tech` on older) |
 | 📖 **Term hints** | Words like *idempotent* or a project name are highlighted; a click opens a one-line card over the reply | 2.1.287+ |
@@ -55,13 +55,13 @@ Setup asks for your language, script and roles. You need Node.js 18 or later. Th
 
 ## Shortcuts
 
-Type these as the whole prompt. None of them uses a Claude turn, except `??`, and `tech`, `story` and the language shortcuts on Claude Code versions without the display mod.
+Type these as the whole prompt. None of them uses a Claude turn, except `huh`, and `tech`, `story` and the language shortcuts on Claude Code versions without the display mod.
 
 | Type | Does |
 |---|---|
 | `en` / `tr` | Show the last answer in English / in your language |
 | `tech` / `story` | Unfold every folded technical part / story (without the display mod: ask for it) |
-| `??` | “I didn't get that”: explain it simpler, and keep it simpler |
+| `huh` | “I didn't get that”: explain it simpler, and keep it simpler. `??` works too, but its first `?` opens Claude Code's shortcut help |
 | `shoga simpler` / `shoga deeper` | Change your level (−2 to +2) |
 | `shoga know N+1, migration` | Stop explaining these terms |
 | `shoga status` | Show your settings and stats |

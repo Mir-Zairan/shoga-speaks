@@ -24,6 +24,13 @@ function world(on: any, state: object, opts: { notice?: boolean } = {}) {
   on('ui.render', async ($: any, e: any) => { const { Text } = $.ui.resolve(e); return <Text>engine-default</Text> })
 }
 
+// Everything a drawing holds as text, in document order: markdown blocks and the
+// word-by-word lines that carry terms (hover cards included, as they are in the tree).
+async function shown(ui: any): Promise<string> {
+  const all = await ui.findAll({})
+  return all.filter((e: any) => e.type === 'Markdown' || e.type === 'Text').map((e: any) => e.text ?? '').join('')
+}
+
 test('the other language is folded, a press translates and unfolds it, on every surface', async ($, on) => {
   world(on, URDU)
   let calls = 0
@@ -67,14 +74,13 @@ test('a failed translation says so and points to the fallback', async ($, on) =>
   await ui.unmount()
 })
 
-test('technical terms get a footer; a press shows the simple meaning', async ($, on) => {
+test('glossary terms are highlighted inside the answer, with their meaning in a hover card', async ($, on) => {
   world(on, ENGLISH_PO)
   const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', ...row('The page is slow because of an N+1 query in the order list. A migration is not needed.') })
-  const term = await ui.find({ type: 'Button', text: /N\+1 query/ })
-  expect(term).toBeDefined()
-  expect(await ui.find({ type: 'Button', text: /^migration$/ })).toBeDefined()
-  await ui.press({ key: term!.key! })
+  expect(await ui.find({ type: 'Text', text: /^N\+1 query$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^migration$/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /asks the database once per item/ })).toBeDefined()
+  expect(await ui.find({ type: 'Button', text: /N\+1|migration/ })).toBeUndefined()
   await ui.unmount()
 })
 
@@ -109,8 +115,6 @@ test('glossary meanings are translated once by a small model and cached', async 
   on('model.complete', async () => { calls++; return { value: { isAnswered: true, text: 'n+1: Code har item ke liye database se alag poochta hai, is liye slow ho jata hai.', usage: {} } } })
   const text = 'Page slow hai kyunke yahan N+1 query hai. Fix chhota hai aur test aasan hai.'
   let ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', ...row(text) })
-  const term = await ui.find({ type: 'Button', text: /N\+1 query/ })
-  await ui.press({ key: term!.key! })
   await ui.redraw()
   expect(await ui.find({ type: 'Text', text: /har item ke liye/ })).toBeDefined()
   await ui.unmount()
@@ -141,13 +145,14 @@ const LAYERED = `Orders page slow tha kyunke har order ke liye alag query chalti
 test('the technical part is folded; a press unfolds it; marks never show as braces', async ($, on) => {
   world(on, URDU)
   const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', ...row(LAYERED) })
-  expect(await ui.find({ type: 'Markdown', text: /Orders page slow tha.*Ab batching se/s })).toBeDefined()
-  expect(await ui.find({ type: 'Markdown', text: /\{\{batching/ })).toBeUndefined()
-  expect(await ui.find({ type: 'Markdown', text: /OrderList\.load/ })).toBeUndefined()
-  expect(await ui.find({ type: 'Markdown', text: /▸ Terms|ek hi baar mein/ })).toBeUndefined()
+  let all = await shown(ui)
+  expect(all).toMatch(/Orders page slow tha.*Ab batching.*se sab ek saath/s)
+  expect(all).not.toMatch(/\{\{batching|▸ Terms|OrderList\.load/)
   const btn = await ui.find({ type: 'Button', text: /Technical/ })
   await ui.press({ key: btn!.key! })
-  expect(await ui.find({ type: 'Markdown', text: /ek batching query.*`\{\{not-a-mark\}\}`/s })).toBeDefined()
+  all = await shown(ui)
+  expect(all).toMatch(/ek batching.*query mein laata hai.*\{\{not-a-mark\}\}/s)
+  expect(all).not.toMatch(/\{\{batching/)
   await ui.unmount()
 })
 
@@ -156,13 +161,13 @@ test('typing "tech" unfolds every technical part with no turn sent to Claude', a
   const r: any = await $.prompt.submit({ text: 'tech' } as any)
   expect(r.drop).toMatch(/Technical part shown/)
   const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', ...row(LAYERED) })
-  expect(await ui.find({ type: 'Markdown', text: /OrderList\.load/ })).toBeDefined()
+  expect(await shown(ui)).toMatch(/OrderList\.load/)
   await ui.unmount()
 })
 
-test('fullscreen: a marked term is a link; a click opens its card over the reply, a second click closes it', async ($, on) => {
+test('desktop: a marked term is a link; a click opens its card over the reply, a second click closes it', async ($, on) => {
   world(on, URDU)
-  const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', viewport: { columns: 100, rows: 40, isFullscreen: true }, ...row(LAYERED) })
+  const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'desktop', ...row(LAYERED) })
   const story = await ui.find({ type: 'Markdown', text: /\[batching\]\(https:\/\/shoga\.invalid\/term\/batching\)/ })
   expect(story).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /ek hi baar mein/ })).toBeUndefined()
@@ -173,17 +178,25 @@ test('fullscreen: a marked term is a link; a click opens its card over the reply
   await ui.unmount()
 })
 
-test('main screen: marked terms become chips; a press pins the card, its ✕ closes it', async ($, on) => {
+test('terminal: a term is highlighted in place, its card sits over the reply and opens on hover', async ($, on) => {
   world(on, URDU)
-  const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', viewport: { columns: 100, rows: 40, isFullscreen: false }, ...row(LAYERED) })
-  expect(await ui.find({ type: 'Markdown', text: /shoga\.invalid/ })).toBeUndefined()
-  const chip = await ui.find({ type: 'Button', text: /^batching$/ })
-  expect(chip).toBeDefined()
-  await ui.press({ key: chip!.key! })
-  const close = await ui.find({ type: 'Button', text: '✕' })
-  expect(close).toBeDefined()
-  await ui.press({ key: close!.key! })
-  expect(await ui.find({ type: 'Button', text: '✕' })).toBeUndefined()
+  for (const isFullscreen of [false, true]) {
+    const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', viewport: { columns: 100, rows: 40, isFullscreen }, ...row(LAYERED) })
+    expect(await ui.find({ type: 'Text', text: /^batching$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /batching: bahut saare kaam ek hi baar mein karna/ })).toBeDefined()
+    expect(await ui.find({ type: 'Button', text: /batching/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Markdown', text: /shoga\.invalid/ })).toBeUndefined()
+    await ui.unmount()
+  }
+})
+
+test('a term Claude only listed is still highlighted; a listed term missing from the text is dropped', async ($, on) => {
+  world(on, URDU)
+  const reply = 'Fix ke liye idempotency key lagao.\n\n▸ Terms\n- {{idempotency key}}: ek request, kaam sirf ek baar\n- presigned URL: S3 ka signed link\n\n▸ English: "en" likhein'
+  const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', ...row(reply) })
+  expect(await ui.find({ type: 'Text', text: /^idempotency key$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /ek request, kaam sirf ek baar/ })).toBeDefined()
+  expect(await shown(ui)).not.toMatch(/presigned|S3 ka signed|▸ Terms|\{\{/)
   await ui.unmount()
 })
 
@@ -211,11 +224,11 @@ test('the other language is translated from the story alone, without marks', asy
 test('technical first: the technical part is shown, the story is folded, "story" unfolds them all', async ($, on) => {
   world(on, { ...URDU, lead: 'technical' })
   let ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', ...row(LAYERED) })
-  expect(await ui.find({ type: 'Markdown', text: /OrderList\.load/ })).toBeDefined()
-  expect(await ui.find({ type: 'Markdown', text: /Orders page slow tha/ })).toBeUndefined()
+  expect(await shown(ui)).toMatch(/OrderList\.load/)
+  expect(await shown(ui)).not.toMatch(/Orders page slow tha/)
   const btn = await ui.find({ type: 'Button', text: /Story/ })
   await ui.press({ key: btn!.key! })
-  expect(await ui.find({ type: 'Markdown', text: /Orders page slow tha/ })).toBeDefined()
+  expect(await shown(ui)).toMatch(/Orders page slow tha/)
   await ui.unmount()
   const r: any = await $.prompt.submit({ text: 'story' } as any)
   expect(r.drop).toMatch(/Story shown/)
@@ -225,8 +238,8 @@ test('technical only: a reply with no story is drawn as one part', async ($, on)
   world(on, { ...URDU, lead: 'technical-only' })
   const reply = '`OrderList.load()` ek query per order chalata hai, {{N+1}} problem.\n\n▸ Terms\n- N+1: har item ke liye alag query\n\n▸ English: "en" likhein'
   const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', ...row(reply) })
-  expect(await ui.find({ type: 'Markdown', text: /ek query per order chalata hai, N\+1 problem/ })).toBeDefined()
+  expect(await shown(ui)).toMatch(/ek query per order chalata hai, N\+1.*problem\./)
   expect(await ui.find({ type: 'Button', text: /Story|Technical/ })).toBeUndefined()
-  expect(await ui.find({ type: 'Button', text: /^N\+1$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^N\+1$/ })).toBeDefined()
   await ui.unmount()
 })

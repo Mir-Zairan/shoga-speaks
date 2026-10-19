@@ -54,12 +54,13 @@ const NATIVE_SCRIPT = /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿ऀ-ॿ]/gu;
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Deterministic checks of one reply against the user's settings.
-//   opts: { avoid: avoidList(...), latinOnly, budget (words, 0 = none), noCode (bool) }
+//   opts: { avoid: avoidList(...), latinOnly, budget (words, 0 = none), noCode (bool),
+//           shown (the part the length budget counts; default: all of text) }
 export function checkReply(text, opts) {
   const p = prose(text);
   const issues = [];
-  const words = wordCount(text);
-  if (words < 15) return { words, issues };
+  if (wordCount(text) < 15) return { words: wordCount(text), issues };
+  const words = wordCount(opts.shown ?? text);
 
   const used = new Set();
   for (const { avoid } of opts.avoid || []) {
@@ -163,6 +164,45 @@ export function markedTerms(text) {
   const seen = new Map();
   markTerms(text, (t) => { const id = termId(t); if (id && !seen.has(id)) seen.set(id, t); return t; });
   return [...seen].map(([id, term]) => ({ id, term }));
+}
+
+export const hasMark = (line) => markedTerms(line).length > 0;
+
+// Marks the first plain occurrence of each term that is not marked yet, so a term Claude
+// only listed under ▸ Terms still gets its highlight. A code span that is exactly the term
+// becomes the mark. Terms not found are left out: nothing to highlight.
+export function ensureMarks(text, terms) {
+  let out = String(text || "");
+  const have = new Set(markedTerms(out).map((t) => t.id));
+  for (const { id, term } of terms) {
+    if (have.has(id)) continue;
+    const word = new RegExp(`(^|[^\\p{L}\\p{N}{])(${escapeRe(term)})(?=$|[^\\p{L}\\p{N}}])`, "iu");
+    let done = false;
+    out = out.split(CODE_SPAN).map((part, i) => {
+      if (done) return part;
+      if (i % 2) {
+        if (part.startsWith("```") || part.slice(1, -1).trim().toLowerCase() !== term.toLowerCase()) return part;
+        done = true;
+        return `{{${part.replace(/`/g, "").trim()}}}`;
+      }
+      return part.replace(word, (_, pre, hit) => { done = true; return `${pre}{{${hit}}}`; });
+    }).join("");
+    if (done) have.add(id);
+  }
+  return out;
+}
+
+// One line of markdown as runs: plain text, `code`, **bold** and {{term}} marks.
+export function inlineSegments(line) {
+  const out = [];
+  for (const part of String(line).split(/(`[^`\n]+`|\*\*[^*\n]+\*\*|\{\{\S(?:[^{}\n]{0,58}\S)?\}\})/)) {
+    if (!part) continue;
+    if (part.startsWith("`")) out.push({ kind: "code", text: part.slice(1, -1) });
+    else if (part.startsWith("**")) out.push({ kind: "bold", text: part.slice(2, -2) });
+    else if (part.startsWith("{{")) out.push({ kind: "term", text: part.slice(2, -2), id: termId(part.slice(2, -2)) });
+    else out.push({ kind: "text", text: part });
+  }
+  return out;
 }
 
 // "- term: meaning" lines of a ▸ Terms block.

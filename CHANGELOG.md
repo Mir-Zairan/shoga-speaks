@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **Term hints sit inside the answer.** On the terminal the term is underlined in place and its card opens on hover, over the reply, on a solid background that no longer clips; desktop, VS Code and mobile open it with a click. The footer of term chips is gone.
+- Terms Claude only listed under `▸ Terms` are now found in the text and highlighted; listed terms that are not in the reply are dropped.
+- The story starts from what the reader does not know yet, one line per point that applies: for their own code, the verdict and what is new (proof, risk, gap); for code new to them, the problem first; when you built it together, what works now and how. When unsure, one line of the problem. A closing question goes before `▸ Technical`, so it is never folded away.
+- The session knows who the user is, from local git and gh config (name, email, GitHub login; no network), so Claude can tell the user's own code from code that is new to them. Code Claude writes in the session counts as new, even under the user's name.
+- The quality check looks for hard words and mixed scripts in the whole reply again; only the length counts the part shown.
+- New shortcut `huh` for "explain it simpler": a `?` typed into an empty prompt opens Claude Code's shortcut help. `??` still works.
+
 ## 0.3.0
 
 - **Story first, tech folded**: replies start with the plain story for your role; the technical part, in full sentences and with what your role checks (code for Dev, repro steps for QA, scope for PO …), is folded under `▸ Technical`. `tech` unfolds every one (without the display mod, it asks Claude for it).

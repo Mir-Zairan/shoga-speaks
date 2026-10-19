@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { avoidList, checkReply, matchCommand, entryText, findTerms, parseDoc, HINT_LINE, isSevere, splitLayers, markedTerms, unmark, shownOf } from "../../scripts/lib/pure.mjs";
+import { avoidList, checkReply, matchCommand, entryText, findTerms, parseDoc, HINT_LINE, isSevere, splitLayers, markedTerms, unmark, shownOf, ensureMarks, inlineSegments } from "../../scripts/lib/pure.mjs";
 
 const root = new URL("../../", import.meta.url);
 import commands from "../../data/commands.mjs";
@@ -89,4 +89,21 @@ test("term marks: found once each, never inside code, removed for drawing and co
   assert.equal(shownOf(LAYERED), "Page slow tha. batching se ab 6x tez hai.");
   assert.match(shownOf(LAYERED, "technical"), /^`OrderList\.load\(\)` ab ek batching query/);
   assert.equal(shownOf("Sirf technical jawab.", "technical"), "Sirf technical jawab.");
+});
+
+test("ensureMarks marks the first plain use of a listed term, or a code span that is the term", () => {
+  const terms = [{ id: "idempotency-key", term: "idempotency key" }, { id: "mockclock", term: "MockClock" }, { id: "s3", term: "S3" }];
+  assert.equal(
+    ensureMarks("Add an Idempotency key here, and use `MockClock` in `test()`. Keep the idempotency key.", terms),
+    "Add an {{Idempotency key}} here, and use {{MockClock}} in `test()`. Keep the idempotency key.");
+  assert.equal(ensureMarks("Already {{idempotency key}} here.", terms), "Already {{idempotency key}} here.");
+  assert.equal(ensureMarks("```\nidempotency key\n```", terms), "```\nidempotency key\n```");
+});
+
+test("inlineSegments splits a line into text, code, bold and term runs", () => {
+  assert.deepEqual(inlineSegments("Fix **now**: `a.ts:8` needs an {{idempotency key}}."), [
+    { kind: "text", text: "Fix " }, { kind: "bold", text: "now" }, { kind: "text", text: ": " },
+    { kind: "code", text: "a.ts:8" }, { kind: "text", text: " needs an " },
+    { kind: "term", text: "idempotency key", id: "idempotency-key" }, { kind: "text", text: "." },
+  ]);
 });

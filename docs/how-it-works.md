@@ -9,7 +9,7 @@ Shoga-Speaks has two layers. The first works on every Claude Code version. The s
 | Hook | What it does |
 |---|---|
 | `SessionStart` | Loads the rules, your language guide, your roles, the project glossary, your level and known terms. Re-runs after `/clear` and compaction. |
-| `UserPromptSubmit` | Adds a one-line reminder to every prompt, with the layout (folded or plain). Handles `en`, `tr`, `tech`, `story`, `??` and `shoga …`. |
+| `UserPromptSubmit` | Adds a one-line reminder to every prompt, with the layout (folded or plain). Handles `en`, `tr`, `tech`, `story`, `huh` (or `??`) and `shoga …`. |
 | `Stop` | Checks the finished reply ([quality check](settings.md#quality-check-quality_guard)). |
 | `PreToolUse` (Bash) | Explains risky commands in the approval prompt. |
 | `PostToolUseFailure` (Bash) | Asks for a plain explanation when a test, build or install fails. |

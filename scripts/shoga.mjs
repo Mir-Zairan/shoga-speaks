@@ -12,9 +12,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 import {
   parseDoc, avoidList, checkReply, describeIssues, isSevere,
-  matchCommand, riskAtLeast, entryText, shownOf,
+  matchCommand, riskAtLeast, entryText, shownOf, unmark,
 } from "./lib/pure.mjs";
 import COMMANDS from "../data/commands.mjs";
 
@@ -232,6 +233,20 @@ function writeModState(r, id) {
   setSessionState(id, { resolved: st });
 }
 
+// Who the user is, from local git and gh config (no network), so Claude can tell their own
+// code (author, blame, PR) from code that is new to them. Only the gh login is read.
+function whoIsUser(cwd) {
+  const git = (key) => {
+    try {
+      return execFileSync("git", ["config", "--get", key], { cwd: cwd || process.cwd(), encoding: "utf8", timeout: 1500, stdio: ["ignore", "pipe", "ignore"] }).trim();
+    } catch { return ""; }
+  };
+  const name = git("user.name"), email = git("user.email");
+  const hosts = readText(path.join(process.env.GH_CONFIG_DIR || path.join(os.homedir(), ".config", "gh"), "hosts.yml")) || "";
+  const login = (hosts.match(/^github\.com:\s*\n(?:[ \t]+.*\n)*?[ \t]+user:[ \t]*(\S+)/m) || [])[1] || "";
+  return [name && email ? `${name} <${email}>` : name || email, login && `GitHub ${login}`].filter(Boolean).join(", ");
+}
+
 // ---------- SessionStart ----------
 
 function sessionStart(input) {
@@ -249,10 +264,12 @@ function sessionStart(input) {
     ? `Write chat replies in simple English${r.bilingual ? ` (the user's own language, ${r.mine.label}, is available on request)` : ""}.`
     : `Write chat replies in ${r.mine.label} (language: ${r.lang.id}, script: ${r.script}${r.mine.rtl ? ", right-to-left" : ""}).`;
   const level = LEVELS[String(r.profile.level)];
+  const who = whoIsUser(input.cwd);
   parts.push(`# This user's settings
 - ${langLine}
 - Keep English technical terms: ${s.keep_english_terms !== false ? "yes" : "no, translate them when a common word exists"}.
-- Length: ${LENGTH_GUIDE[s.length] || LENGTH_GUIDE.short}. When you stop early, end with: "${r.open.moreDetail}"
+${who ? `- The user: ${who}. Code by this author (git log, blame, a PR) is theirs; code you write in this session is new to them.
+` : ""}- Length: ${LENGTH_GUIDE[s.length] || LENGTH_GUIDE.short}. When you stop early, end with: "${r.open.moreDetail}"
 - Primary role: ${primaryRole(r)}. Write the whole answer for this role: what it cares about, what it leaves out, how it ends.${extraRoles(r) ? `
 - Other roles: ${extraRoles(r)}. Each gets at most one short line, labelled with the role name. No code blocks for them unless the user asks.` : ""}${level ? `
 - Level: ${level}` : ""}${r.profile.known_terms.length ? `
@@ -356,14 +373,15 @@ function prompt(input) {
       `Known terms: ${prof.known_terms.length} · Replies checked: ${checked}, with slips: ${slipped}`,
       r.found ? `Settings: ${[r.paths.team, r.paths.user, r.paths.local].filter((f) => fs.existsSync(f)).join(", ")}` : "Settings: plugin defaults (run /shoga-speaks:setup)",
       ...r.notes.map((n) => `Note: ${n}`),
-      `Shortcuts: "${r.bilingual ? r.otherKey : "en"}" other language · "tech" / "story" the other layer · "??" simpler · "shoga simpler|deeper" · "shoga know <terms>" · "shoga off|on"`,
+      `Shortcuts: "${r.bilingual ? r.otherKey : "en"}" other language · "tech" / "story" the other layer · "huh" simpler · "shoga simpler|deeper" · "shoga know <terms>" · "shoga off|on"`,
     ].join("\n"));
   }
 
   if (isOff(r, id)) return;
 
   let ctx;
-  if (cmd === "??" || cmd === "shoga ??") {
+  // "huh" is the one to type: a "?" in an empty prompt opens Claude Code's shortcut help.
+  if (cmd === "??" || cmd === "huh" || cmd === "huh?" || cmd === "shoga ??") {
     if (prof.level > -2) { prof.level -= 1; saveProfile(prof); }
     ctx = `Shoga-Speaks: the user did not understand your previous reply. Explain the same thing again, simpler: shorter sentences, no jargon, one everyday example. Same language (${r.open.label}) and layout. No new work, no tool calls. From now on: ${LEVELS[String(prof.level)] || "use simple words"}`;
   } else if (cmd === "tech" || cmd === "story") {
@@ -402,8 +420,10 @@ function lastAssistantText(input) {
   return "";
 }
 
-export function checkFor(r, text) {
-  return checkReply(text, {
+// Words and script are checked in the whole reply; the length only in the part shown.
+export function checkFor(r, text, shown) {
+  return checkReply(unmark(text), {
+    shown,
     avoid: avoidList(r.openLang.sections[r.openScript]),
     latinOnly: r.open.latin || r.openLang.id === "english",
     budget: WORD_BUDGET[r.s.length || "short"] ?? 250,
@@ -419,7 +439,7 @@ function stop(input) {
   const text = lastAssistantText(input);
   if (!text) return;
 
-  const { issues } = checkFor(r, shownOf(text, leadOf(r.s)));
+  const { issues } = checkFor(r, text, shownOf(text, leadOf(r.s)));
   const prof = loadProfile();
   prof.stats = { checked: (prof.stats.checked || 0) + 1, slipped: (prof.stats.slipped || 0) + (issues.length ? 1 : 0) };
   saveProfile(prof);

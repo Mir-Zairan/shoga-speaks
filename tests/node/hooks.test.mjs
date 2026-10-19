@@ -159,3 +159,27 @@ test("every role says what its technical part holds", () => {
     assert.match(fs.readFileSync(new URL(`../../roles/${f}`, import.meta.url), "utf8"), /^Technical part: .+/m, f);
   }
 });
+
+test("huh asks for a simpler re-explanation, like ??", () => {
+  settings(URDU_QA);
+  assert.match(run("prompt", { prompt: "huh" }).hookSpecificOutput.additionalContext, /did not understand/);
+});
+
+test("stop: hard words in the folded technical part are still caught", () => {
+  settings(URDU_QA);
+  const reply = "PR theek hai aur tests pass hain. Fix chhota hai aur safe hai.\n\n▸ Technical\nYeh line batati hai ke behtar hai ke pehle masla theek karein, phir test chalayein.";
+  run("stop", { last_assistant_message: reply });
+  assert.match(run("prompt", { prompt: "next" }).hookSpecificOutput.additionalContext, /hard words \((masla, behtar|behtar, masla)\)/);
+});
+
+test("session start names the user from git and gh config, so their own code is known", () => {
+  settings(URDU_QA);
+  spawnSync("git", ["init", "-q"], { cwd: home });
+  spawnSync("git", ["config", "user.name", "Test Dev"], { cwd: home });
+  spawnSync("git", ["config", "user.email", "dev@example.com"], { cwd: home });
+  fs.mkdirSync(path.join(home, ".config", "gh"), { recursive: true });
+  fs.writeFileSync(path.join(home, ".config", "gh", "hosts.yml"), "github.com:\n    oauth_token: secret-token\n    git_protocol: ssh\n    user: test-dev\n");
+  const ctx = run("session-start", { source: "startup" }).hookSpecificOutput.additionalContext;
+  assert.match(ctx, /The user: Test Dev <dev@example.com>, GitHub test-dev\. Code by this author/);
+  assert.doesNotMatch(ctx, /secret-token/);
+});

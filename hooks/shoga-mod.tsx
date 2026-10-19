@@ -5,7 +5,8 @@
 //   - "en" / "tr" typed alone unfolds or folds every reply, with no Claude turn
 //   - a reply's story and technical part: the one the settings lead with is shown, the
 //     other folded away; "tech" (or "story") unfolds or folds them all
-//   - {{terms}} Claude marked are highlighted; a click opens a short card over the reply
+//   - terms Claude marked or listed are highlighted inside the answer; on the terminal a
+//     hover opens a short card over the reply, elsewhere a click does
 //   - shell commands get a plain-language line under the approval dialog and the tool row
 //   - a status line shows the active language and role
 
@@ -13,7 +14,7 @@ import { atom, read, update } from 'claude-code'
 import type { Register, EngineInterface } from 'claude-code'
 import {
   idOf, matchCommand, entryText, findTerms, RISK_MARK,
-  splitLayers, markTerms, markedTerms, unmark, termId, rowAt,
+  splitLayers, markTerms, markedTerms, unmark, termId, rowAt, ensureMarks, hasMark, inlineSegments,
 } from '../scripts/lib/pure.mjs'
 import COMMANDS from '../data/commands.mjs'
 import GLOSSARY from '../data/glossary.mjs'
@@ -138,21 +139,26 @@ async function glossMeanings($: $, ids: string[], st: ModSettings): Promise<Reco
   return out
 }
 
-type Term = { id: string; term: string; meaning: string; marked: boolean }
+type Term = { id: string; term: string; meaning: string }
 
-// The terms a reply explains: the ones Claude marked, with the meaning it listed or the
-// glossary's; for a reply with no marks, the glossary terms its story uses.
-async function termsOf($: $, story: string, tech: string, listed: { id: string; meaning: string }[], st: ModSettings): Promise<Term[]> {
+// The terms a reply explains, with the meaning Claude gave or the glossary's: the ones it
+// marked, else the ones it only listed under ▸ Terms, else glossary terms the story uses.
+// A term that never appears in the text is dropped, since there is nothing to highlight.
+async function termsOf($: $, story: string, tech: string, listed: { id: string; term: string; meaning: string }[], st: ModSettings): Promise<Term[]> {
   const known = new Set((st.knownTerms || []).map(termId))
-  const marked = markedTerms(`${story}\n${tech}`).filter((m) => !known.has(m.id))
-  if (!marked.length) {
+  const both = `${story}\n${tech}`
+  let picked: { id: string; term: string }[] = markedTerms(both)
+  if (!picked.length) picked = listed.filter((t) => markedTerms(ensureMarks(both, [t])).length > 0)
+  picked = picked.filter((m) => !known.has(m.id))
+  if (!picked.length) {
     const found = findTerms(story, GLOSSARY, st.knownTerms || [])
     const meanings = await glossMeanings($, found.map((t: { id: string }) => t.id), st)
-    return found.map((t: { id: string; term: string }) => ({ id: t.id, term: t.term, meaning: meanings[t.id] ?? '', marked: false }))
+    return found.map((t: { id: string; term: string }) => ({ id: termId(t.term), term: t.term, meaning: meanings[t.id] ?? '' }))
+      .filter((t: Term) => t.meaning && markedTerms(ensureMarks(story, [t])).length > 0)
   }
   const given = new Map(listed.map((t) => [t.id, t.meaning]))
   const fromGlossary = new Map<string, string>()
-  for (const m of marked) {
+  for (const m of picked) {
     if (given.has(m.id)) continue
     const g = GLOSSARY.find((x: { id: string; term: string; aliases?: string[] }) =>
       [x.id, x.term, ...(x.aliases || [])].some((a) => termId(a) === m.id))
@@ -160,9 +166,9 @@ async function termsOf($: $, story: string, tech: string, listed: { id: string; 
   }
   const meanings = fromGlossary.size ? await glossMeanings($, [...fromGlossary.values()], st) : {}
   const out: Term[] = []
-  for (const m of marked) {
+  for (const m of picked) {
     const meaning = given.get(m.id) ?? meanings[fromGlossary.get(m.id) ?? '']
-    if (meaning) out.push({ id: m.id, term: m.term, meaning, marked: true })
+    if (meaning) out.push({ id: m.id, term: m.term, meaning })
   }
   return out.slice(0, MAX_TERMS)
 }
@@ -243,63 +249,88 @@ export const register: Register = (on) => {
     const { Box, Text, Markdown, Button } = $.ui.resolve(e)
     const cols = e.viewport?.columns ?? 80
     const width = Math.max(20, Math.min(64, cols - 4))
-    // Links take a plain click on desktop, VS Code and the fullscreen terminal. On the
-    // terminal's main screen a click on a link opens it, so terms become chips there.
-    const inline = e.surface !== 'terminal' || e.viewport?.isFullscreen === true
+    // On the terminal a term opens on hover (a Text inside a Text cannot start a hover there,
+    // so lines with terms are drawn word by word). Desktop, VS Code and mobile get links
+    // that open the card on a click.
+    const hover = e.surface === 'terminal'
     const byId = new Map(terms.map((t) => [t.id, t]))
     const pinned = (await read($, card))[id] ?? ''
     const pin = (where: string) => update($, card, (c) => ({ ...c, [id]: c[id] === where ? '' : where }))
-    const cardRows = (t: Term) => Math.ceil((t.term.length + t.meaning.length + 2) / (width - 4)) + 2
+    const marked = (md: string) => markTerms(ensureMarks(md, terms), (t) => (byId.has(termId(t)) ? `{{${t}}}` : t))
 
-    // A term's card, drawn over the reply; nothing below it moves.
-    const termCard = (t: Term, top: number, left: number) => (
-      <Box key={`shoga-card-${id}`} position="absolute" top={top} left={left} width={width} borderStyle="round" paddingX={1} flexDirection="row">
-        <Box flexGrow={1} flexShrink={1}><Text>{t.term}: {t.meaning}</Text></Box>
-        <Button key={`shoga-card-x-${id}`} plain dimColor label="✕" onPress={() => update($, card, (c) => ({ ...c, [id]: '' }))} />
+    // A term's card, drawn over the reply on a solid background; nothing below it moves.
+    // A key makes a Box a hover scope, so the hidden hover card gets none.
+    const cardOf = (t: Term, key: string | undefined, top: number, left: number, extra: Record<string, unknown> = {}) => (
+      <Box key={key} position="absolute" top={top} left={left} width={Math.min(width, t.term.length + t.meaning.length + 6)} backgroundColor="suggestion" paddingX={1} {...extra}>
+        <Text color="inverseText" wrap="wrap"><Text bold>{t.term}</Text>: {t.meaning}</Text>
       </Box>
     )
 
-    // The story or the technical part, its marked terms as links where a click lands.
+    // One line holding terms, word by word so it wraps; each term carries its hover card.
+    const termLine = (name: string, line: string, n: number) => {
+      const lead = line.match(/^(\s*)(?:([-*+])|(\d+[.)]))\s+/)
+      const body = lead ? line.slice(lead[0].length) : line
+      let col = lead ? lead[0].length : 0
+      const cells: unknown[] = []
+      if (lead) cells.push(<Text key={`shoga-l-${n}`}>{lead[1]}{lead[2] ? '• ' : `${lead[3]} `}</Text>)
+      inlineSegments(body).forEach((seg, i) => {
+        const t = seg.kind === 'term' ? byId.get(seg.id) : undefined
+        if (t) {
+          const at = col % Math.max(20, cols - 4)
+          const w = Math.min(width, t.term.length + t.meaning.length + 6)
+          const left = -Math.max(0, at + w - (cols - 2))
+          cells.push(
+            <Box key={`shoga-t-${id}-${name}-${n}-${i}`}>
+              <Text underline color="suggestion" hover={{ inverse: true }}>{seg.text}</Text>
+              {cardOf(t, undefined, 1, left, { display: 'none', hover: { display: 'flex' } })}
+            </Box>,
+          )
+        } else {
+          for (const [j, word] of (seg.text.match(/\S+\s*|\s+/g) || []).entries()) {
+            cells.push(
+              <Text key={`shoga-w-${n}-${i}-${j}`} bold={seg.kind === 'bold'} color={seg.kind === 'code' ? 'permission' : undefined}>{word}</Text>,
+            )
+          }
+        }
+        col += seg.text.length
+      })
+      return <Box key={`shoga-row-${id}-${name}-${n}`} flexDirection="row" flexWrap="wrap">{cells}</Box>
+    }
+
+    // The story or the technical part. Lines without terms stay markdown.
     const part = (name: 'story' | 'tech', md: string) => {
-      if (!inline || !terms.some((t) => t.marked)) return <Markdown key={`shoga-${name}-${id}`} text={unmark(md)} />
-      const drawn = markTerms(md, (t) => (byId.has(termId(t)) ? `[${t}](${TERM_URL}${termId(t)})` : t))
+      if (!terms.length) return <Markdown key={`shoga-${name}-${id}`} text={unmark(md)} />
+      const drawn = marked(md)
+      if (hover) {
+        const blocks: unknown[] = []
+        let buf: string[] = []
+        let fence = false
+        const flush = () => {
+          if (buf.join('').trim()) blocks.push(<Markdown key={`shoga-${name}-${id}-${blocks.length}`} text={unmark(buf.join('\n'))} />)
+          buf = []
+        }
+        drawn.split('\n').forEach((line, n) => {
+          if (/^\s*```/.test(line)) fence = !fence
+          if (!fence && hasMark(line)) { flush(); blocks.push(termLine(name, line, n)) } else buf.push(line)
+        })
+        flush()
+        return <Box flexDirection="column">{blocks}</Box>
+      }
+      const linked = markTerms(drawn, (t) => (byId.has(termId(t)) ? `[${t}](${TERM_URL}${termId(t)})` : t))
       const shown = pinned.startsWith(`${name}:`) ? byId.get(pinned.slice(name.length + 1)) : undefined
-      const at = shown ? drawn.indexOf(`](${TERM_URL}${shown.id})`) : -1
+      const at = shown ? linked.indexOf(`](${TERM_URL}${shown.id})`) : -1
       return (
         <Box flexDirection="column">
           <Markdown
             key={`shoga-${name}-${id}`}
-            text={drawn}
+            text={linked}
             pressableLinks={terms.map((t) => TERM_URL + t.id)}
             onLinkPress={(link) => {
               const tid = link.href.slice(TERM_URL.length)
               if (byId.has(tid)) void pin(`${name}:${tid}`)
             }}
           />
-          {shown && at >= 0 ? termCard(shown, rowAt(drawn, at, cols) + 1, 2) : null}
-        </Box>
-      )
-    }
-
-    // Terms with no link in the text: chips under the story. Hover shows the card, a press pins it.
-    let chips = null
-    const chipTerms = inline ? terms.filter((t) => !t.marked) : terms
-    if (chipTerms.length) {
-      chips = (
-        <Box flexDirection="row" flexWrap="wrap">
-          <Text dimColor>📖 </Text>
-          {chipTerms.map((t) => (
-            <Box key={`shoga-g-${id}-${t.id}`} marginRight={2}>
-              <Button key={`shoga-gb-${id}-${t.id}`} plain dimColor label={t.term} onPress={() => pin(`chip:${t.id}`)} />
-              {pinned === `chip:${t.id}`
-                ? termCard(t, -cardRows(t), 0)
-                : (
-                  <Box position="absolute" top={-cardRows(t)} left={0} width={width} display="none" hover={{ display: 'flex' }} borderStyle="round" paddingX={1}>
-                    <Text>{t.term}: {t.meaning}</Text>
-                  </Box>
-                )}
-            </Box>
-          ))}
+          {shown && at >= 0 ? cardOf(shown, `shoga-card-${id}`, rowAt(linked, at, cols) + 1, 2) : null}
         </Box>
       )
     }
@@ -356,7 +387,6 @@ export const register: Register = (on) => {
     return (
       <Box flexDirection="column">
         {part(techFirst ? 'tech' : 'story', lead)}
-        {chips}
         {fold}
         {other}
       </Box>

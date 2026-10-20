@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.2
 
 - **Terms are listed, never marked.** Claude lists the terms under `▸ Terms`, written as in the text, and the display mod underlines them in place, so no `{{…}}` braces show up on the web, in the `ctrl+o` transcript or in exports. Old replies with marks still work.
 - **On the web:** a cloud session (`CLAUDE_CODE_REMOTE=true`) gets the plain layout: the story, then `▸ Technical: "tech"` on request, and the term list as a short glossary. For Remote Control from claude.ai, `shoga web on` does the same for the session; `shoga web off` folds again.

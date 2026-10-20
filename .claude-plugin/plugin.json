@@ -1,7 +1,7 @@
 {
   "name": "shoga-speaks",
   "displayName": "Shoga-Speaks",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Claude Code explains everything in your language, script and role: Roman-Urdu, Urdu, Hinglish, Hindi, Dutch or plain English, for devs, QA, DevOps, POs and PMs. Plain-language approvals, failure explanations, quality checks and a fold-out translation.",
   "author": {
     "name": "Zairan Mir"

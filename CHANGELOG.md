@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.3
 
 Fixes from an adversarial test pass (the cases now live in `tests/node/edge.test.mjs` and `hooks/shoga-mod.edge.test.tsx`).
 

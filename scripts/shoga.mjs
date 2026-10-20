@@ -199,10 +199,16 @@ const LAYOUTS = {
   "technical-only": ["technical only", "technical only"],
 };
 
-// The layout line of the per-prompt reminder.
+// Seen in a browser, where the display mod draws nothing: a cloud session, or a session
+// the user marked with "shoga web on" (Remote Control from claude.ai).
+const onWeb = (id) => process.env.CLAUDE_CODE_REMOTE === "true" || sessionState(id).web === true;
+
+// The layout line of the per-prompt reminder. Folding needs the display mod on screen;
+// term hints also help on the web, where the list reads as a glossary.
 function layout(r, id) {
-  const mod = modActive(id);
-  return ` Layout: ${LAYOUTS[leadOf(r.s)][mod ? 0 : 1]}${mod && termHints(r.s) ? ", term hints on" : ""}.`;
+  const folds = modActive(id) && !onWeb(id);
+  const hints = (folds || onWeb(id)) && termHints(r.s);
+  return ` Layout: ${LAYOUTS[leadOf(r.s)][folds ? 0 : 1]}${hints ? ", term hints on" : ""}.`;
 }
 
 // core/layers.md with only the layouts this user's lead can get (a bullet names its layouts in backticks).
@@ -342,6 +348,14 @@ function prompt(input) {
     return block(off ? "🦜 Shoga-Speaks is off for this session. Type \"shoga on\" to turn it back on." : "🦜 Shoga-Speaks is on again for this session.");
   }
 
+  if (cmd === "shoga web on" || cmd === "shoga web off") {
+    const web = cmd.endsWith("on");
+    setSessionState(id, { web });
+    return block(web
+      ? "🦜 Web mode on for this session: no folding, the technical part comes when you type \"tech\". Type \"shoga web off\" to undo."
+      : "🦜 Web mode off: the technical part folds in the terminal again.");
+  }
+
   const prof = loadProfile();
   if (cmd === "shoga simpler" || cmd === "shoga deeper") {
     prof.level = Math.max(-2, Math.min(2, prof.level + (cmd.endsWith("simpler") ? -1 : 1)));
@@ -366,14 +380,14 @@ function prompt(input) {
   if (cmd === "shoga status" || cmd === "shoga") {
     const { checked = 0, slipped = 0 } = prof.stats;
     return block([
-      `🦜 Shoga-Speaks is ${isOff(r, id) ? "OFF" : "ON"}${modActive(id) ? " · display mod active" : ""}`,
+      `🦜 Shoga-Speaks is ${isOff(r, id) ? "OFF" : "ON"}${modActive(id) ? " · display mod active" : ""}${onWeb(id) ? " · web mode" : ""}`,
       `Language: ${r.lang.id} (${r.mine.label}, script: ${r.script}) · CLI shows: ${r.open.label}`,
       `GitHub: ${s.github_open === "translated" ? r.mineGh.label : "English"} open, ${s.github_open === "translated" ? "English" : r.mineGh.label} collapsed`,
       `Roles: ${roleNames(r)} · Length: ${s.length || "short"} · Level: ${prof.level}`,
       `Known terms: ${prof.known_terms.length} · Replies checked: ${checked}, with slips: ${slipped}`,
       r.found ? `Settings: ${[r.paths.team, r.paths.user, r.paths.local].filter((f) => fs.existsSync(f)).join(", ")}` : "Settings: plugin defaults (run /shoga-speaks:setup)",
       ...r.notes.map((n) => `Note: ${n}`),
-      `Shortcuts: "${r.bilingual ? r.otherKey : "en"}" other language · "tech" / "story" the other layer · "huh" simpler · "shoga simpler|deeper" · "shoga know <terms>" · "shoga off|on"`,
+      `Shortcuts: "${r.bilingual ? r.otherKey : "en"}" other language · "tech" / "story" the other layer · "huh" simpler · "shoga simpler|deeper" · "shoga know <terms>" · "shoga web on|off" · "shoga off|on"`,
     ].join("\n"));
   }
 
@@ -428,6 +442,7 @@ export function checkFor(r, text, shown) {
     latinOnly: r.open.latin || r.openLang.id === "english",
     budget: WORD_BUDGET[r.s.length || "short"] ?? 250,
     noCode: NON_CODE_ROLES.has(r.roles[0].id),
+    moreDetail: r.open.moreDetail,
   });
 }
 

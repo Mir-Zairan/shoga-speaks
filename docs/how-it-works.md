@@ -27,6 +27,8 @@ Hooks can't change a reply after it is written, so Shoga-Speaks shapes it before
 - Technical terms Claude marks (`{{idempotency key}}`), or only lists under `▸ Terms`, are underlined inside the answer. On the terminal a hover opens a one-line card over the reply; on desktop, VS Code and mobile a click does. Glossary meanings are translated once and cached.
 - A status line shows `🦜 Roman-Urdu · QA`.
 
+On the web nothing the mod draws appears, so there is nothing to fold or hover: a cloud session gets the plain layout by itself (the story, `tech` for the details, the term list as a glossary), and in a Remote Control session from claude.ai `shoga web on` does the same.
+
 Mods are early access in Claude Code. They don't run in `claude -p`, the Agent SDK or cloud sessions. There, layer 1 still works: `en` asks Claude for the other language instead.
 
 ## Files

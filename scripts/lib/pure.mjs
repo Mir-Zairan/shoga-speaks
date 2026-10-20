@@ -78,6 +78,9 @@ export function checkReply(text, opts) {
   }
   if (opts.budget && words > opts.budget) issues.push({ kind: "too-long", detail: [words, opts.budget] });
   if (opts.noCode && /```/.test(text)) issues.push({ kind: "code-for-role", detail: [] });
+  // A question or "more detail" offer inside the technical part is folded away unread.
+  const tech = prose(splitLayers(text).tech).trim();
+  if (tech && (/\?\s*$/.test(tech) || (opts.moreDetail && tech.includes(opts.moreDetail)))) issues.push({ kind: "question-folded", detail: [] });
   return { words, issues };
 }
 
@@ -87,6 +90,7 @@ export function describeIssues(issues) {
     if (i.kind === "script-mix") return `mixed in characters from another script (${i.detail.join(" ")})`;
     if (i.kind === "too-long") return `was ${i.detail[0]} words, the limit is about ${i.detail[1]}`;
     if (i.kind === "code-for-role") return "showed a code block to a non-developer role";
+    if (i.kind === "question-folded") return "ended the folded technical part with a question or offer (put it at the end of the story, before ▸ Technical)";
     return i.kind;
   }).join("; ");
 }

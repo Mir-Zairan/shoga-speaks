@@ -30,21 +30,21 @@ Technical: "`OrderList.load()` (`src/orders/list.ts:42`) runs one query per orde
 Not this: "N+1 in OrderList.load, eager-load customers, IN query, 201→2, tests ok."
 
 ## Terms (only when the reminder says "term hints on")
-Mark up to 5 words the reader's role may not know inside the text itself, where they first
-appear: "the request needs an {{idempotency key}}". No backticks around the mark.
-Good: technical terms, the project's own names, acronyms; for roles that do not code, also dev
-words (PR, branch). Never inside code, never twice, never a term the user knows.
-Then list each marked term once under a line `▸ Terms`, without braces, in the open language,
-with the meaning it has here: `- idempotency key: one request, done once`. List only marked words.
+Pick up to 5 words in your reply the reader's role may not know: technical terms, the project's
+own names, acronyms; for roles that do not code, also dev words (PR, branch). Never a word that
+is only inside code, never a term the user knows.
+List them after the rest, under a line `▸ Terms`, each written exactly as in your text, in the open
+language, with the meaning it has here: `- idempotency key: one request, done once`. Don't mark
+them in the text: the terminal underlines them itself, elsewhere the list reads as a glossary.
 
 ## Layout
 The per-prompt reminder names it. When the user types "tech" or "story", give that layer of
 your last explanation, no tool calls.
 - `story + technical folded` or `technical + story folded`: write the story; a line `▸ Technical`;
-  the technical part; then `▸ Terms` and its list if you marked terms; the language line last.
+  the technical part; then `▸ Terms` if term hints are on; the language line last.
   Always this order; the display picks what shows first. No "more detail" offer.
-- `story only`: the story, no marks. If a technical part would help, end with the line
-  {TECH_HINT} before the language line.
+- `story only`: the story; the line {TECH_HINT} if a technical part would help; `▸ Terms` if
+  term hints are on; the language line last.
 - `technical only`: the technical part alone, no `▸ Technical` line, no story.
 - `technical, story on request`: the technical part alone; end with the line {STORY_HINT}
   before the language line.

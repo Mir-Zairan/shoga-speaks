@@ -243,3 +243,34 @@ test('technical only: a reply with no story is drawn as one part', async ($, on)
   expect(await ui.find({ type: 'Text', text: /^N\+1$/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('list-only terms (no marks in the text) are underlined in place, on both terminal layouts', async ($, on) => {
+  world(on, URDU)
+  const reply = [
+    'Hooks shell commands hain jo Claude ke kaam ke beech mein khud chalte hain.',
+    '',
+    '- Har hook ek event se juda hota hai, jaise tool chalne se pehle.',
+    '- Ek matcher batata hai ke hook kis tool par chale, jaise `Edit|Write`.',
+    '',
+    '▸ Technical',
+    'Hooks `.claude/settings.json` mein `"hooks"` key ke neeche hote hain.',
+    '',
+    '▸ Terms',
+    '- event: woh lamha jab hook chalta hai',
+    '- matcher: tool ke naam ka pattern',
+    '- payload: yeh word text mein nahi hai',
+    '',
+    '▸ English: "en" likhein',
+  ].join('\n')
+  for (const isFullscreen of [false, true]) {
+    const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', viewport: { columns: 120, rows: 40, isFullscreen }, ...row(reply) })
+    expect(await ui.find({ type: 'Text', text: /^event$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^matcher$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /event: woh lamha jab hook chalta hai/ })).toBeDefined()
+    const all = await shown(ui)
+    expect(all).not.toMatch(/\{\{|▸ Terms|payload/)
+    expect(all).toMatch(/Hooks shell commands hain/)
+    expect(await ui.find({ type: 'Button', text: /Technical/ })).toBeDefined()
+    await ui.unmount()
+  }
+})

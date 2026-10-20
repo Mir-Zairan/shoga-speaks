@@ -8,10 +8,10 @@ import { spawnSync } from "node:child_process";
 const SCRIPT = new URL("../../scripts/shoga.mjs", import.meta.url).pathname;
 let home, shoga;
 
-function run(mode, input) {
+function run(mode, input, env = {}) {
   const r = spawnSync(process.execPath, [SCRIPT, mode], {
     input: JSON.stringify({ session_id: "s1", cwd: home, ...input }),
-    env: { ...process.env, HOME: home, USERPROFILE: home, SHOGA_HOME: shoga, CLAUDE_PROJECT_DIR: home, CLAUDE_PLUGIN_ROOT: "" },
+    env: { ...process.env, HOME: home, USERPROFILE: home, SHOGA_HOME: shoga, CLAUDE_PROJECT_DIR: home, CLAUDE_PLUGIN_ROOT: "", CLAUDE_CODE_REMOTE: "", ...env },
     encoding: "utf8",
   });
   assert.equal(r.status, 0, r.stderr);
@@ -117,7 +117,7 @@ test("layers: rules at session start; the reminder says folded with the mod, pla
   settings(URDU_QA);
   const ctx = run("session-start", { source: "startup" }).hookSpecificOutput.additionalContext;
   assert.match(ctx, /# Two layers/);
-  assert.match(ctx, /end with the line\s+▸ Technical: "tech" likhein/);
+  assert.match(ctx, /the line ▸ Technical: "tech" likhein if a technical part would help/);
   assert.match(ctx, /types "tech" or "story"/);
   assert.doesNotMatch(ctx, /technical, story on request/);
   assert.ok(ctx.length < 14000, `context is ${ctx.length} chars`);
@@ -182,4 +182,35 @@ test("session start names the user from git and gh config, so their own code is 
   const ctx = run("session-start", { source: "startup" }).hookSpecificOutput.additionalContext;
   assert.match(ctx, /The user: Test Dev <dev@example.com>, GitHub test-dev\. Code by this author/);
   assert.doesNotMatch(ctx, /secret-token/);
+});
+
+test("web: a cloud session and \"shoga web on\" get the plain layout with the term list", () => {
+  settings(URDU_QA);
+  fs.mkdirSync(path.join(shoga, "state"), { recursive: true });
+  fs.writeFileSync(path.join(shoga, "state", "s1.mod"), "1");
+  const reminder = (env) => run("prompt", { prompt: "next" }, env).hookSpecificOutput.additionalContext;
+  assert.match(reminder(), /Layout: story \+ technical folded, term hints on\./);
+  assert.match(reminder({ CLAUDE_CODE_REMOTE: "true" }), /Layout: story only, term hints on\./);
+  assert.match(run("prompt", { prompt: "shoga web on" }).reason, /Web mode on/);
+  assert.match(reminder(), /Layout: story only, term hints on\./);
+  assert.match(run("prompt", { prompt: "shoga status" }).reason, /web mode/);
+  assert.match(run("prompt", { prompt: "shoga web off" }).reason, /Web mode off/);
+  assert.match(reminder(), /Layout: story \+ technical folded/);
+});
+
+test("stop: a question or more-detail offer inside the folded technical part is flagged", () => {
+  settings(URDU_QA);
+  const story = "PR theek hai aur tests pass hain. Fix chhota hai aur safe hai, release kar sakte hain.";
+  run("stop", { last_assistant_message: `${story}\n\n▸ Technical\nFix ek line ka hai aur test bhi add hua hai.\nDetail chahiye? Main push kar doon?` });
+  assert.match(run("prompt", { prompt: "next" }).hookSpecificOutput.additionalContext, /folded technical part with a question/);
+  run("stop", { last_assistant_message: `${story} Kya main push kar doon?\n\n▸ Technical\nFix ek line ka hai aur test bhi add hua hai.` });
+  assert.doesNotMatch(run("prompt", { prompt: "next" }).hookSpecificOutput.additionalContext, /Your last reply/);
+});
+
+test("session start: terms are listed, never marked with braces", () => {
+  settings(URDU_QA);
+  const ctx = run("session-start", { source: "startup" }).hookSpecificOutput.additionalContext;
+  assert.match(ctx, /each written exactly as in your text/);
+  assert.match(ctx, /Don't mark\s+them in the text/);
+  assert.doesNotMatch(ctx, /\{\{/);
 });

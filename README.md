@@ -68,6 +68,7 @@ Type these as the whole prompt. None of them uses a Claude turn, except `huh`, a
 | `shoga simpler` / `shoga deeper` | Change your level (−2 to +2) |
 | `shoga know N+1, migration` | Stop explaining these terms |
 | `shoga status` | Show your settings and stats |
+| `shoga web on` / `shoga web off` | Reading in a browser (Remote Control from claude.ai)? No folding; type `tech` for the details. Cloud sessions do this by themselves |
 | `shoga off` / `shoga on` | Turn it off or on for this session |
 
 ## Languages and roles

@@ -274,3 +274,27 @@ test('list-only terms (no marks in the text) are underlined in place, on both te
     await ui.unmount()
   }
 })
+
+test('a term inside bold is still underlined, tables keep markdown, and blank lines between blocks stay', async ($, on) => {
+  world(on, URDU)
+  const reply = [
+    '**Dashboards par planning lambi rahegi** kyunke wahan optimizer hint nahi lagta.',
+    '',
+    '- Doosri baat: test sirf yeh dekhta hai ke hint kahin bhi ho.',
+    '',
+    '| view | hint |',
+    '|---|---|',
+    '| cut_off | optimizer hint |',
+    '',
+    '▸ Terms',
+    '- optimizer hint: query ke andar MySQL ke liye chhota sa note',
+    '- Dashboards: reports ka ek page',
+  ].join('\n')
+  const ui = await $.ui.mount({ plugin: 'shoga-speaks', surface: 'terminal', viewport: { columns: 120, rows: 40 }, ...row(reply) })
+  expect(await ui.find({ type: 'Text', text: /^Dashboards$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /^optimizer hint$/ })).toBeDefined()
+  expect(await ui.find({ type: 'Markdown', text: /\| cut_off \| optimizer hint \|/ })).toBeDefined()
+  expect(await shown(ui)).not.toMatch(/\{\{/)
+  expect((await ui.findAll({ type: 'Text', text: /^ $/ })).length).toBeGreaterThan(0)
+  await ui.unmount()
+})

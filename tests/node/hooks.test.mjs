@@ -30,7 +30,10 @@ test("session start: context, status line and state for the mod", () => {
   const out = run("session-start", { source: "startup" });
   assert.match(out.systemMessage, /Roman-Urdu · QA \/ Tester \+ Developer/);
   const ctx = out.hookSpecificOutput.additionalContext;
-  assert.ok(ctx.length < 10000, `context is ${ctx.length} chars`);
+  // The plugin's own path appears in the context; measure it as a long install path would be.
+  const root = path.resolve(path.dirname(SCRIPT), "..");
+  const size = ctx.length - (ctx.split(root).length - 1) * (root.length - 80);
+  assert.ok(size < 10000, `context is ${size} chars with an 80-char install path`);
   assert.match(ctx, /Primary role: QA \/ Tester/);
   assert.match(ctx, /▸ English: "en" likhein/);
   const st = JSON.parse(fs.readFileSync(path.join(shoga, "state", "latest.json"), "utf8"));
@@ -213,4 +216,19 @@ test("session start: terms are listed, never marked with braces", () => {
   assert.match(ctx, /each written exactly as in your text/);
   assert.match(ctx, /Don't mark\s+them in the text/);
   assert.doesNotMatch(ctx, /\{\{/);
+});
+
+test("stop: a question mid-line in the technical part and listed terms missing from the text are flagged", () => {
+  settings(URDU_QA);
+  const story = "PR merge ke laayak hai, lekin do cheezein pehle theek honi chahiye. Tests pass hain aur page tez hai.";
+  run("stop", { last_assistant_message: `${story}\n\n▸ Technical\n- Agla step: kya main comments draft karoon? Post karne se pehle dikhaunga.\n\n▸ Terms\n- join order search: tables jodne ki tarteeb dhoondhna\n- Tests: automatic checks` });
+  const ctx = run("prompt", { prompt: "next" }).hookSpecificOutput.additionalContext;
+  assert.match(ctx, /folded technical part with a question/);
+  assert.match(ctx, /listed terms that are not in the text \(join order search\)/);
+  assert.doesNotMatch(ctx, /not in the text \([^)]*Tests/);
+});
+
+test("the reminder keeps the language line off one-line progress notes", () => {
+  settings(URDU_QA);
+  assert.match(run("prompt", { prompt: "next" }).hookSpecificOutput.additionalContext, /not a one-line progress note/);
 });

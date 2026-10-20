@@ -25,6 +25,42 @@ export default [
     }
   },
   {
+    "id": "push-delete", "risk": "danger",
+    "match": "\\bgit\\s+push\\b[^\\n]*(\\s--delete\\b|\\s-d\\b|\\s:\\S)",
+    "text": {
+      "english": "Deletes this branch on GitHub, for everyone on the team.",
+      "urdu:roman": "Yeh branch GitHub par sab ke liye delete ho jayegi.",
+      "urdu:native": "یہ برانچ GitHub پر سب کے لیے ڈیلیٹ ہو جائے گی۔",
+      "hindi:roman": "Yeh branch GitHub par sab ke liye delete ho jayegi.",
+      "hindi:native": "यह ब्रांच GitHub पर सबके लिए डिलीट हो जाएगी।",
+      "dutch": "Verwijdert deze branch op GitHub, voor iedereen in het team."
+    }
+  },
+  {
+    "id": "branch-force-delete", "risk": "danger", "flags": "",
+    "match": "\\bgit\\s+branch\\b[^\\n]*(\\s-[a-zA-Z]*D\\b|--delete\\s+--force|--force\\s+--delete)",
+    "text": {
+      "english": "Deletes this branch even if its work is not merged anywhere.",
+      "urdu:roman": "Yeh branch delete hogi, chahe us ka kaam kahin merge na hua ho.",
+      "urdu:native": "یہ برانچ ڈیلیٹ ہو گی، چاہے اس کا کام کہیں مرج نہ ہوا ہو۔",
+      "hindi:roman": "Yeh branch delete hogi, chahe uska kaam kahin merge na hua ho.",
+      "hindi:native": "यह ब्रांच डिलीट होगी, चाहे उसका काम कहीं मर्ज न हुआ हो।",
+      "dutch": "Verwijdert deze branch, ook als het werk nergens gemerged is."
+    }
+  },
+  {
+    "id": "stash-delete", "risk": "danger",
+    "match": "\\bgit\\s+stash\\s+(clear|drop)\\b",
+    "text": {
+      "english": "Deletes your stashed changes for good.",
+      "urdu:roman": "Aapke stash kiye hue changes hamesha ke liye mit jayenge.",
+      "urdu:native": "آپ کے سٹیش کیے ہوئے چینجز ہمیشہ کے لیے مٹ جائیں گے۔",
+      "hindi:roman": "Aapke stash kiye hue changes hamesha ke liye mit jayenge.",
+      "hindi:native": "आपके स्टैश किए हुए बदलाव हमेशा के लिए मिट जाएंगे।",
+      "dutch": "Gooit je gestashte wijzigingen voorgoed weg."
+    }
+  },
+  {
     "id": "reset-hard", "risk": "danger",
     "match": "\\bgit\\s+reset\\b[^\\n]*--hard",
     "text": {
@@ -50,7 +86,7 @@ export default [
   },
   {
     "id": "discard-edits", "risk": "danger",
-    "match": "\\bgit\\s+checkout\\s+--\\s|\\bgit\\s+restore\\s+(?!--staged\\b)\\S",
+    "match": "\\bgit\\s+checkout\\s+--\\s|\\bgit\\s+checkout\\s+\\.(\\s|$)|\\bgit\\s+restore\\s+(?!--staged\\b)\\S",
     "text": {
       "english": "Throws away your edits that are not committed yet.",
       "urdu:roman": "Aapki jo edits commit nahi huin, woh mit jayengi.",
@@ -62,7 +98,7 @@ export default [
   },
   {
     "id": "rm-recursive", "risk": "danger",
-    "match": "(^|[;&|]\\s*|\\s)(sudo\\s+)?rm\\s+(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)\\b",
+    "match": "(^|[;&|(]\\s*|\\s)(sudo\\s+)?(\\S*\\/)?\\\\?rm(\\s+-{1,2}[a-zA-Z][\\w-]*)*\\s+(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)\\b",
     "text": {
       "english": "Deletes these files or folders for good. There is no recycle bin.",
       "urdu:roman": "Yeh files ya folders hamesha ke liye delete honge. Recycle bin mein nahi jayenge.",
@@ -74,7 +110,7 @@ export default [
   },
   {
     "id": "drop-data", "risk": "danger",
-    "match": "\\b(drop\\s+(table|database|schema)|truncate\\s+table)\\b",
+    "match": "\\b(drop\\s+(table|database|schema)|truncate\\s+table|delete\\s+from)\\b",
     "text": {
       "english": "Deletes data from the database for good.",
       "urdu:roman": "Database ka data hamesha ke liye delete hoga.",

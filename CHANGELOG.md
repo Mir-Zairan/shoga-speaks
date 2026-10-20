@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+Fixes from an adversarial test pass (the cases now live in `tests/node/edge.test.mjs` and `hooks/shoga-mod.edge.test.tsx`).
+
+- **Term lines keep their markdown.** A line with a term is drawn word by word on the terminal; italic, bold, strikethrough, links, a few HTML tags, escapes and blockquotes are now drawn as styles instead of raw `*`, `[…](…)` or `>`. A nested list stays a list, not a code block. Inline code that is exactly the term keeps its code colour.
+- **Terms are found where they belong:** never inside links, URLs or code; the longest term first ("idempotency key" before "key"); case and a plural "s" are free; Devanagari and Urdu terms keep their letters. Rules ask for terms from the story first, so the default view has something to underline.
+- **Cards fit:** a card opens above the term when the rows above hold it, else below, and a short reply makes room under itself. Narrow terminals get a narrower card. On desktop the card row is counted on the shown text.
+- **Layer markers:** `**▸ Technical**`, `## ▸ Technical` and `▸ Technical: text` fold too; markers inside code fences are code; a reply with only a technical part shows it; `layers: technical-only` leads with the technical part; equal replies keep their own fold state; CRLF replies draw clean.
+- **Web:** in web mode the mod passes `tech`, `story`, `en` and `tr` on to Claude. The display mod's marker goes stale when the mod stops touching it, so a session resumed without the mod gets the plain layout and the approval explanations again.
+- **Quality check:** a question or offer anywhere in the folded technical part (not in code, quotes or URLs; "Let me know if…", "Agar chahein to…") is flagged, also in short replies. Listed terms the reply never uses are flagged.
+- **Risky commands:** `rm -f -r`, `/bin/rm -rf`, `\rm -rf`, `git push --delete` and `:branch`, `git checkout .`, `git branch -D`, `git stash clear|drop` and `DELETE FROM` are explained; words quoted for `echo`, a commit message or a grep pattern no longer trigger an explanation. A failing `grep test` no longer counts as a failed test.
+- **Smaller:** `huh??` works; `layers` is read case-free; `en` / `tr` for an English user gets a short answer; the gh login is read from CRLF files, quoted values and GitHub Enterprise; extra roles add only what they care about and check, so the session context stays small; the context-size test no longer depends on the install path.
+- Blank lines around term lines are kept, and `▸ Technical` and `▸ English` get a line of space above them. Someone else's PR gets one plain line of what it changes, right after the verdict. The language line is no longer added to one-line progress notes.
+
 ## 0.3.2
 
 - **Terms are listed, never marked.** Claude lists the terms under `▸ Terms`, written as in the text, and the display mod underlines them in place, so no `{{…}}` braces show up on the web, in the `ctrl+o` transcript or in exports. Old replies with marks still work.

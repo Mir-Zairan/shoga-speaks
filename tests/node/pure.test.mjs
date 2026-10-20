@@ -95,15 +95,37 @@ test("ensureMarks marks the first plain use of a listed term, or a code span tha
   const terms = [{ id: "idempotency-key", term: "idempotency key" }, { id: "mockclock", term: "MockClock" }, { id: "s3", term: "S3" }];
   assert.equal(
     ensureMarks("Add an Idempotency key here, and use `MockClock` in `test()`. Keep the idempotency key.", terms),
-    "Add an {{Idempotency key}} here, and use {{MockClock}} in `test()`. Keep the idempotency key.");
+    "Add an {{Idempotency key}} here, and use {{\u2063MockClock}} in `test()`. Keep the idempotency key.");
+  assert.equal(unmark(ensureMarks("Use `MockClock` here.", terms)), "Use `MockClock` here.");
   assert.equal(ensureMarks("Already {{idempotency key}} here.", terms), "Already {{idempotency key}} here.");
   assert.equal(ensureMarks("```\nidempotency key\n```", terms), "```\nidempotency key\n```");
 });
 
-test("inlineSegments splits a line into text, code, bold and term runs", () => {
+test("ensureMarks: longest term first, plural, and never inside links, URLs or another mark", () => {
+  const t = (...xs) => xs.map((x) => ({ id: x, term: x }));
+  assert.equal(ensureMarks("an idempotency key, the key", t("key", "idempotency key")), "an {{idempotency key}}, the {{key}}");
+  assert.equal(ensureMarks("Two migrations ran.", t("migration")), "Two {{migrations}} ran.");
+  assert.equal(ensureMarks("See [docs](https://cache.io/x) and https://e.com/cache?x=1 then cache.", t("cache")), "See [docs](https://cache.io/x) and https://e.com/cache?x=1 then {{cache}}.");
+  assert.equal(ensureMarks("See [the cache docs](https://x.io).", t("cache")), "See [the cache docs](https://x.io).");
+  assert.equal(ensureMarks("Yeh रिलीज़ hai.", t("रिलीज़")), "Yeh {{रिलीज़}} hai.");
+});
+
+test("inlineSegments splits a line into styled runs, so no markdown syntax is drawn raw", () => {
   assert.deepEqual(inlineSegments("Fix **now**: `a.ts:8` needs an {{idempotency key}}."), [
-    { kind: "text", text: "Fix " }, { kind: "bold", text: "now" }, { kind: "text", text: ": " },
-    { kind: "code", text: "a.ts:8" }, { kind: "text", text: " needs an " },
+    { kind: "text", text: "Fix " }, { kind: "text", text: "now", bold: true }, { kind: "text", text: ": " },
+    { kind: "code", text: "a.ts:8", code: true }, { kind: "text", text: " needs an " },
     { kind: "term", text: "idempotency key", id: "idempotency-key" }, { kind: "text", text: "." },
   ]);
+  assert.deepEqual(inlineSegments("**Wahan {{optimizer hint}} nahi** lagta"), [
+    { kind: "text", text: "Wahan ", bold: true }, { kind: "term", text: "optimizer hint", id: "optimizer-hint", bold: true },
+    { kind: "text", text: " nahi", bold: true }, { kind: "text", text: " lagta" },
+  ]);
+  const flat = (l) => inlineSegments(l).map((r) => r.text).join("");
+  for (const l of ["Use *x* now.", "Use _x_ now.", "Use ***x*** now.", "[the x docs](https://x.io/a)", "~~x~~ gone", "Use <b>x</b>."]) {
+    assert.doesNotMatch(flat(l), /[*_~\\[\]<>]|\(https/, l);
+  }
+  assert.equal(flat("Use \\*x\\* here."), "Use *x* here.");
+  assert.deepEqual(inlineSegments("[a {{t}}](https://u)")[1], { kind: "term", text: "t", id: "t", href: "https://u" });
+  assert.equal(inlineSegments("{{\u2063MockClock}}")[0].code, true);
 });
+

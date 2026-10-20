@@ -18,6 +18,8 @@ export type ModSettings = {
   lead: 'story' | 'technical' | 'technical-only'
   knownTerms: string[]
   enabled: boolean
+  // Set by the mod itself: read in a browser ("shoga web on" or a cloud session).
+  web?: boolean
 }
 
 declare module 'claude-code' {

@@ -14,7 +14,7 @@ import { atom, read, update } from 'claude-code'
 import type { Register, EngineInterface } from 'claude-code'
 import {
   idOf, matchCommand, entryText, findTerms, RISK_MARK,
-  splitLayers, markTerms, markedTerms, unmark, termId, rowAt, ensureMarks, hasMark, inlineSegments,
+  splitLayers, markTerms, markedTerms, unmark, termId, termText, ensureMarks, hasMark, inlineSegments,
 } from '../scripts/lib/pure.mjs'
 import COMMANDS from '../data/commands.mjs'
 import GLOSSARY from '../data/glossary.mjs'
@@ -56,9 +56,17 @@ async function settings($: $, fresh = false): Promise<ModSettings | null> {
     else {
       const dir = `${await shogaHome($)}/state`
       const id = String(await $.session.id()).replace(/[^\w.-]/g, '_')
-      try { value = JSON.parse(await $.fs.read(`${dir}/${id}.json`)).resolved ?? null } catch {}
+      let web = false
+      try {
+        const state = JSON.parse(await $.fs.read(`${dir}/${id}.json`))
+        value = state.resolved ?? null
+        web = state.web === true
+      } catch {}
       if (!value) value = JSON.parse(await $.fs.read(`${dir}/latest.json`))
+      if (value) value = { ...value, web }
     }
+    // A cloud session is read in a browser, where nothing this mod draws appears.
+    if (value && (await $.env.get('CLAUDE_CODE_REMOTE')) === 'true') value = { ...value, web: true }
   } catch {}
   cached = { at: now, value }
   return value
@@ -175,21 +183,30 @@ async function termsOf($: $, story: string, tech: string, listed: { id: string; 
 
 // ---------- hooks ----------
 
+// The marker that tells the classic hooks this mod is running. It is touched on session
+// start, each prompt and each shell command; an untouched one goes stale (scripts/shoga.mjs).
+async function touchMarker($: $) {
+  try {
+    const id = String(await $.session.id()).replace(/[^\w.-]/g, '_')
+    await $.fs.write(`${await shogaHome($)}/state/${id}.mod`, String(await $.clock.now()))
+  } catch {}
+}
+
 export const register: Register = (on) => {
   on('session.start', async ($, e, next) => {
     const result = await next(e)
-    try {
-      const id = String(await $.session.id()).replace(/[^\w.-]/g, '_')
-      await $.fs.write(`${await shogaHome($)}/state/${id}.mod`, '1')
-    } catch {}
+    await touchMarker($)
     try { await showStatus($) } catch {}
     return result
   })
 
   on('prompt.submit', async ($, e, next) => {
+    await touchMarker($)
     const st = await settings($, true)
     try { await showStatus($) } catch {}
     const cmd = e.text.trim().toLowerCase()
+    // Read in a browser, nothing folds: the keywords go to Claude, which answers them.
+    if (st?.web) return next(e)
     if (isOn(st) && st.bilingual && (cmd === 'en' || cmd === 'tr')) {
       const now = await update($, showAll, (v) => !v)
       return { drop: now ? `🦜 ${st.otherLabel} shown under each reply. Type "${cmd}" again to fold it.` : `🦜 ${st.otherLabel} folded away.` }
@@ -206,6 +223,7 @@ export const register: Register = (on) => {
 
   // A plain line under the approval dialog for shell commands.
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+    await touchMarker($)
     try {
       const st = await settings($)
       if (isOn(st) && st.explainCommands) {
@@ -238,91 +256,156 @@ export const register: Register = (on) => {
     const st = await settings($)
     if (!isOn(st)) return next(e)
 
-    const text = e.props.text
+    const text = e.props.text.replace(/\r\n?/g, '\n')
     const { story, tech, terms: listed, hint } = splitLayers(text)
     const hasHint = st.bilingual && !!hint
     const hasMarks = markedTerms(`${story}\n${tech}`).length > 0
     const terms = st.termHints ? await termsOf($, story, tech, listed, st) : []
-    if (!hasHint && !tech && !hasMarks && !terms.length) return next(e)
+    if (!hasHint && !tech && !hasMarks && !terms.length && !listed.length) return next(e)
 
+    // Translations are shared by equal replies; fold and card state belong to this one.
     const id = idOf(text)
-    const { Box, Text, Markdown, Button } = $.ui.resolve(e)
+    const at = `${id}:${(e as { requestId?: string }).requestId ?? ''}`
+    const { Box, Text, Markdown, Button, Link } = $.ui.resolve(e)
     const cols = e.viewport?.columns ?? 80
-    const width = Math.max(20, Math.min(64, cols - 4))
+    const width = Math.max(10, Math.min(64, cols - 4))
     // On the terminal a term opens on hover (a Text inside a Text cannot start a hover there,
     // so lines with terms are drawn word by word). Desktop, VS Code and mobile get links
     // that open the card on a click.
     const hover = e.surface === 'terminal'
     const byId = new Map(terms.map((t) => [t.id, t]))
-    const pinned = (await read($, card))[id] ?? ''
-    const pin = (where: string) => update($, card, (c) => ({ ...c, [id]: c[id] === where ? '' : where }))
-    const marked = (md: string) => markTerms(ensureMarks(md, terms), (t) => (byId.has(termId(t)) ? `{{${t}}}` : t))
+    // A plural use ("migrations") finds its listed term ("migration").
+    const termFor = (tid: string) => byId.get(tid) ?? byId.get(tid.replace(/s$/, '')) ?? byId.get(tid.replace(/es$/, ''))
+    const pinned = (await read($, card))[at] ?? ''
+    const pin = (where: string) => update($, card, (c) => ({ ...c, [at]: c[at] === where ? '' : where }))
+    const marked = (md: string) => markTerms(ensureMarks(md, terms), (t) => (termFor(termId(t)) ? `{{${t}}}` : termText(t)))
+
+    // The layer the settings lead with is shown, the other folded until pressed, or while
+    // "tech" / "story" is on. With no story, the technical part leads.
+    const techFirst = !!tech && (st.lead === 'technical' || st.lead === 'technical-only' || !story)
+    const [lead, rest] = techFirst ? [tech, story] : [story, tech]
+    const restOpen = !!rest && ((await read($, foldAll)) || (await read($, foldOpen))[at] === true)
+    const otherOpen = hasHint && ((await read($, showAll)) || (await read($, open))[at] === true)
+
+    // About how many rows the reply takes, to open each card where it fits. When it fits
+    // nowhere, rows are added under the reply so the card below is not cut off.
+    const rowsOf = (md: string) => unmark(md).split('\n').reduce((n, l) => n + Math.max(1, Math.ceil(l.length / Math.max(10, cols - 2))), 0)
+    const leadRows = rowsOf(lead)
+    const total = leadRows + (rest ? 2 + (restOpen ? rowsOf(rest) : 0) : 0) + (hasHint ? 2 : 0)
+    let room = 0
+    const cardWidth = (t: Term) => Math.min(width, t.term.length + t.meaning.length + 6)
+    const cardRows = (t: Term) => Math.ceil((t.term.length + t.meaning.length + 2) / Math.max(1, cardWidth(t) - 2))
+    const above = (t: Term, row: number) => {
+      if (row >= cardRows(t)) return true
+      room = Math.max(room, cardRows(t) - (total - row - 1))
+      return false
+    }
 
     // A term's card, drawn over the reply on a solid background; nothing below it moves.
     // A key makes a Box a hover scope, so the hidden hover card gets none.
     const cardOf = (t: Term, key: string | undefined, top: number, left: number, extra: Record<string, unknown> = {}) => (
-      <Box key={key} position="absolute" top={top} left={left} width={Math.min(width, t.term.length + t.meaning.length + 6)} backgroundColor="suggestion" paddingX={1} {...extra}>
+      <Box key={key} position="absolute" top={top} left={left} width={cardWidth(t)} backgroundColor="suggestion" paddingX={1} {...extra}>
         <Text color="inverseText" wrap="wrap"><Text bold>{t.term}</Text>: {t.meaning}</Text>
       </Box>
     )
 
-    // One line holding terms, word by word so it wraps; each term carries its hover card.
-    const termLine = (name: string, line: string, n: number) => {
-      const lead = line.match(/^(\s*)(?:([-*+])|(\d+[.)]))\s+/)
-      const body = lead ? line.slice(lead[0].length) : line
-      let col = lead ? lead[0].length : 0
+    // One line drawn word by word so it wraps, its markdown styles kept; each term carries
+    // its hover card. `row` is about how many rows of the reply sit above this line.
+    const termLine = (name: string, line: string, n: number, row: number) => {
+      const head = line.match(/^(\s*)(?:([-*+])|(\d+[.)])|(>))\s+/)
+      const body = head ? line.slice(head[0].length) : line.trimStart()
+      const indent = head ? head[1] : (line.match(/^\s*/) || [''])[0]
+      let col = head ? head[0].length : indent.length
+      const span = Math.max(20, cols - 4)
       const cells: unknown[] = []
-      if (lead) cells.push(<Text key={`shoga-l-${n}`}>{lead[1]}{lead[2] ? '• ' : `${lead[3]} `}</Text>)
+      const mark = head ? (head[2] ? '• ' : head[3] ? `${head[3]} ` : '│ ') : ''
+      if (head || indent) cells.push(<Text key={`shoga-l-${n}`} dimColor={!!head?.[4]}>{indent}{mark}</Text>)
       inlineSegments(body).forEach((seg, i) => {
-        const t = seg.kind === 'term' ? byId.get(seg.id) : undefined
+        const look = { bold: !!seg.bold, italic: !!seg.italic, strikethrough: !!seg.strike }
+        const t = seg.kind === 'term' ? termFor(seg.id) : undefined
         if (t) {
-          const at = col % Math.max(20, cols - 4)
-          const w = Math.min(width, t.term.length + t.meaning.length + 6)
-          const left = -Math.max(0, at + w - (cols - 2))
+          const left = -Math.max(0, (col % span) + cardWidth(t) - (cols - 2))
+          const top = above(t, row + Math.floor(col / span)) ? -cardRows(t) : 1
           cells.push(
-            <Box key={`shoga-t-${id}-${name}-${n}-${i}`}>
-              <Text underline color="suggestion" hover={{ inverse: true }}>{seg.text}</Text>
-              {cardOf(t, undefined, 1, left, { display: 'none', hover: { display: 'flex' } })}
+            <Box key={`shoga-t-${at}-${name}-${n}-${i}`}>
+              <Text underline {...look} color={seg.code ? 'permission' : 'suggestion'} hover={{ inverse: true }}>{seg.text}</Text>
+              {cardOf(t, undefined, top, left, { display: 'none', hover: { display: 'flex' } })}
             </Box>,
           )
         } else {
           for (const [j, word] of (seg.text.match(/\S+\s*|\s+/g) || []).entries()) {
-            cells.push(
-              <Text key={`shoga-w-${n}-${i}-${j}`} bold={seg.kind === 'bold'} color={seg.kind === 'code' ? 'permission' : undefined}>{word}</Text>,
-            )
+            const k = `shoga-w-${n}-${i}-${j}`
+            cells.push(seg.href
+              ? <Text key={k} {...look}><Link href={seg.href}>{word}</Link></Text>
+              : <Text key={k} {...look} color={seg.code ? 'permission' : undefined}>{word}</Text>)
           }
         }
         col += seg.text.length
       })
-      return <Box key={`shoga-row-${id}-${name}-${n}`} flexDirection="row" flexWrap="wrap">{cells}</Box>
+      return <Box key={`shoga-row-${at}-${name}-${n}`} flexDirection="row" flexWrap="wrap">{cells}</Box>
     }
 
-    // The story or the technical part. Lines without terms stay markdown.
-    const part = (name: 'story' | 'tech', md: string) => {
-      if (!terms.length) return <Markdown key={`shoga-${name}-${id}`} text={unmark(md)} />
-      const drawn = marked(md)
+    // The story or the technical part. Blocks without terms stay markdown.
+    const part = (name: 'story' | 'tech', md: string, base = 0) => {
+      const drawn = terms.length ? marked(md) : md
+      if (!hasMark(drawn)) return <Markdown key={`shoga-${name}-${at}`} text={unmark(drawn)} />
       if (hover) {
-        const blocks: unknown[] = []
-        let buf: string[] = []
+        // Paragraphs and lists split at blank lines (outside code fences). A term-free one
+        // stays markdown, joined with its term-free neighbours so markdown spaces them; one
+        // with terms is drawn line by line, with a blank row around it as in the source.
+        const chunks: string[][] = [[]]
         let fence = false
-        const flush = () => {
-          if (buf.join('').trim()) blocks.push(<Markdown key={`shoga-${name}-${id}-${blocks.length}`} text={unmark(buf.join('\n'))} />)
-          buf = []
-        }
-        drawn.split('\n').forEach((line, n) => {
+        for (const line of drawn.split('\n')) {
           if (/^\s*```/.test(line)) fence = !fence
-          if (!fence && hasMark(line)) { flush(); blocks.push(termLine(name, line, n)) } else buf.push(line)
+          if (!fence && !line.trim()) { if (chunks[chunks.length - 1].length) chunks.push([]) } else chunks[chunks.length - 1].push(line)
+        }
+        // Table rows, headings and code fences keep their markdown, without the highlight.
+        const termy = (line: string) => hasMark(line) && !/^\s*(\||#|```)/.test(line)
+        const items: { terms: boolean; lines: string[] }[] = []
+        for (const chunk of chunks.filter((c) => c.length)) {
+          const has = chunk.some(termy)
+          const last = items[items.length - 1]
+          if (!has && last && !last.terms) last.lines.push('', ...chunk)
+          else items.push({ terms: has, lines: chunk })
+        }
+        const blocks: unknown[] = []
+        let row = base
+        items.forEach((item, k) => {
+          if (k > 0) { blocks.push(<Text key={`shoga-gap-${at}-${name}-${k}`}> </Text>); row += 1 }
+          if (!item.terms) {
+            const block = item.lines.join('\n')
+            blocks.push(<Markdown key={`shoga-${name}-${at}-${k}`} text={unmark(block)} />)
+            row += rowsOf(block)
+            return
+          }
+          // In a chunk with terms, markdown keeps tables and fences; every other line is
+          // drawn as a row, so a nested list keeps its indent instead of turning into code.
+          let keepMd: string[] = []
+          let inFence = false
+          const flushMd = (n: number) => {
+            if (keepMd.length) blocks.push(<Markdown key={`shoga-${name}-${at}-${k}-${n}`} text={unmark(keepMd.join('\n'))} />)
+            keepMd = []
+          }
+          item.lines.forEach((line, n) => {
+            const fenceLine = /^\s*```/.test(line)
+            if (fenceLine) inFence = !inFence
+            if (fenceLine || inFence || /^\s*(\||#)/.test(line)) keepMd.push(line)
+            else { flushMd(n); blocks.push(termLine(name, line, k * 1000 + n, row)) }
+            row += rowsOf(line)
+          })
+          flushMd(item.lines.length)
         })
-        flush()
         return <Box flexDirection="column">{blocks}</Box>
       }
-      const linked = markTerms(drawn, (t) => (byId.has(termId(t)) ? `[${t}](${TERM_URL}${termId(t)})` : t))
+      const linked = markTerms(drawn, (t) => { const term = termFor(termId(t)); return term ? `[${termText(t)}](${TERM_URL}${term.id})` : termText(t) })
       const shown = pinned.startsWith(`${name}:`) ? byId.get(pinned.slice(name.length + 1)) : undefined
-      const at = shown ? linked.indexOf(`](${TERM_URL}${shown.id})`) : -1
+      const idx = shown ? linked.indexOf(`](${TERM_URL}${shown.id})`) : -1
+      // The row is counted on the text as shown, not on the long link markdown.
+      const shownRow = idx >= 0 ? Math.max(0, rowsOf(linked.slice(0, idx).replace(/\]\(https:\/\/shoga\.invalid\/term\/[^)]*\)/g, '').replace(/\[/g, '')) - 1) : 0
       return (
         <Box flexDirection="column">
           <Markdown
-            key={`shoga-${name}-${id}`}
+            key={`shoga-${name}-${at}`}
             text={linked}
             pressableLinks={terms.map((t) => TERM_URL + t.id)}
             onLinkPress={(link) => {
@@ -330,28 +413,25 @@ export const register: Register = (on) => {
               if (byId.has(tid)) void pin(`${name}:${tid}`)
             }}
           />
-          {shown && at >= 0 ? cardOf(shown, `shoga-card-${id}`, rowAt(linked, at, cols) + 1, 2) : null}
+          {shown && idx >= 0 ? cardOf(shown, `shoga-card-${at}`, above(shown, base + shownRow) ? shownRow - cardRows(shown) : shownRow + 1, 2) : null}
         </Box>
       )
     }
 
-    // The layer the settings lead with is shown; the other is folded until pressed, or
-    // while "tech" / "story" is on.
-    const techFirst = st.lead === 'technical' && !!tech
-    const [lead, rest] = techFirst ? [tech, story] : [story, tech]
+    const leadPart = part(techFirst ? 'tech' : 'story', lead)
     let fold = null
     if (rest) {
-      const isOpen = (await read($, foldAll)) || (await read($, foldOpen))[id] === true
+      const restPart = restOpen ? part(techFirst ? 'story' : 'tech', rest, leadRows + 2) : null
       fold = (
-        <Box flexDirection="column">
+        <Box flexDirection="column" marginTop={1}>
           <Button
-            key={`shoga-fold-${id}`}
+            key={`shoga-fold-${at}`}
             plain
             dimColor
-            label={`${isOpen ? '▾' : '▸'} ${techFirst ? 'Story' : 'Technical'}`}
-            onPress={() => update($, foldOpen, (o) => ({ ...o, [id]: !o[id] }))}
+            label={`${restOpen ? '▾' : '▸'} ${techFirst ? 'Story' : 'Technical'}`}
+            onPress={() => update($, foldOpen, (o) => ({ ...o, [at]: !o[at] }))}
           />
-          {isOpen ? part(techFirst ? 'story' : 'tech', rest) : null}
+          {restPart}
         </Box>
       )
     }
@@ -360,25 +440,24 @@ export const register: Register = (on) => {
     let other = null
     if (hasHint) {
       const plain = unmark(lead)
-      const isOpen = (await read($, showAll)) || (await read($, open))[id] === true
       const done = translations.get(id)
-      if (isOpen && done === undefined) translate($, id, plain, st)
+      if (otherOpen && done === undefined) translate($, id, plain, st)
       other = (
-        <Box flexDirection="column">
+        <Box flexDirection="column" marginTop={1}>
           <Button
-            key={`shoga-toggle-${id}`}
+            key={`shoga-toggle-${at}`}
             plain
             dimColor
-            label={`${isOpen ? '▾' : '▸'} ${st.otherLabel}`}
+            label={`${otherOpen ? '▾' : '▸'} ${st.otherLabel}`}
             onPress={async () => {
-              const now = await update($, open, (o) => ({ ...o, [id]: !o[id] }))
-              if (now[id]) translate($, id, plain, st)
+              const now = await update($, open, (o) => ({ ...o, [at]: !o[at] }))
+              if (now[at]) translate($, id, plain, st)
             }}
           />
-          {isOpen ? (
+          {otherOpen ? (
             done === undefined
               ? <Text dimColor>  {PENDING}</Text>
-              : <Markdown key={`shoga-other-${id}`} text={done} />
+              : <Markdown key={`shoga-other-${at}`} text={done} />
           ) : null}
         </Box>
       )
@@ -386,9 +465,10 @@ export const register: Register = (on) => {
 
     return (
       <Box flexDirection="column">
-        {part(techFirst ? 'tech' : 'story', lead)}
+        {leadPart}
         {fold}
         {other}
+        {Array.from({ length: room }, (_, i) => <Text key={`shoga-room-${at}-${i}`}> </Text>)}
       </Box>
     )
   })

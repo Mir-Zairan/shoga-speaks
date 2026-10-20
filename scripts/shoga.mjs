@@ -35,7 +35,10 @@ const LEVELS = {
   "2": "The user is an expert; be terse and skip explanations of standard terms.",
 };
 const NON_CODE_ROLES = new Set(["po", "pm", "support"]);
-const FAILURE_WORTHY = /\b(test|tests|phpunit|pytest|jest|vitest|build|compile|tsc|webpack|vite|lint|eslint|phpstan|psalm|install|migrate|migration|deploy|make)\b/i;
+// A failing command worth a plain line: a test, build, install, lint or migration, named as
+// the program one segment of the command runs, not as a word anywhere in it ("grep test").
+const FAILURE_WORTHY = /^(?:(?:sudo|env|npx|bunx|time)\s+|\w+=\S*\s+)*(?:\S*\/)?(?:phpunit|pytest|jest|vitest|tsc|webpack|vite|eslint|phpstan|psalm|mago|rector|make|mvn|gradlew?|(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?(?:test|build|lint|install|ci|i|typecheck|check)\b|composer\s+(?:install|update|require|test|run|[\w:-]*(?:test|lint|stan|cs)[\w:-]*)|(?:cargo|go)\s+(?:test|build)|node\s+--test|pip3?\s+install|(?:php\s+)?bin\/console\s+doctrine:migrations|docker\s+(?:compose\s+)?build|python3?\s+-m\s+pytest)\b/i;
+const failureWorthy = (cmd) => String(cmd).split(/&&|\|\||[;|&\n]/).some((seg) => FAILURE_WORTHY.test(seg.trim()));
 const GLOSSARY_LIMIT = 3000;
 
 // ---------- io ----------
@@ -102,7 +105,12 @@ const sid = (id) => String(id || "default").replace(/[^\w.-]/g, "_");
 const statePath = (id) => path.join(HOME, "state", `${sid(id)}.json`);
 const sessionState = (id) => { const j = readJson(statePath(id)); return j && !j.__invalid ? j : {}; };
 const setSessionState = (id, patch) => writeJson(statePath(id), { ...sessionState(id), ...patch });
-const modActive = (id) => fs.existsSync(path.join(HOME, "state", `${sid(id)}.mod`));
+// The display mod touches its marker on session start, each prompt and each shell command,
+// so a marker left by an older session (resumed without the mod, or under -p) goes stale.
+const MOD_FRESH_MS = 30 * 60 * 1000;
+const modActive = (id) => {
+  try { return Date.now() - fs.statSync(path.join(HOME, "state", `${sid(id)}.mod`)).mtimeMs < MOD_FRESH_MS; } catch { return false; }
+};
 
 // ---------- language / role resolution ----------
 
@@ -190,7 +198,10 @@ const isOff = (r, id) => r.s.enabled === false || sessionState(id).off;
 const termHints = (s) => s.term_hints !== "off" && s.glossary_hover !== "off";
 const offer = (r, label, key) => r.open.hint.replace("{other}", label).replace("{key}", key);
 // Which layer leads: "story" (technical folded), "technical" (story folded) or "technical-only".
-const leadOf = (s) => (["technical", "technical-only"].includes(s.layers) ? s.layers : "story");
+const leadOf = (s) => {
+  const v = String(s.layers || "").toLowerCase();
+  return ["technical", "technical-only"].includes(v) ? v : "story";
+};
 
 // Layout names by lead: with the display mod, then without (core/layers.md, "Layout").
 const LAYOUTS = {
@@ -248,9 +259,27 @@ function whoIsUser(cwd) {
     } catch { return ""; }
   };
   const name = git("user.name"), email = git("user.email");
-  const hosts = readText(path.join(process.env.GH_CONFIG_DIR || path.join(os.homedir(), ".config", "gh"), "hosts.yml")) || "";
-  const login = (hosts.match(/^github\.com:\s*\n(?:[ \t]+.*\n)*?[ \t]+user:[ \t]*(\S+)/m) || [])[1] || "";
+  const login = ghLogin(readText(path.join(process.env.GH_CONFIG_DIR || path.join(os.homedir(), ".config", "gh"), "hosts.yml")) || "");
   return [name && email ? `${name} <${email}>` : name || email, login && `GitHub ${login}`].filter(Boolean).join(", ");
+}
+
+// The login in gh's hosts.yml: the "user:" set right under a host, github.com first, else the
+// first host that has one (GitHub Enterprise). Nothing else in the file is read.
+export function ghLogin(yml) {
+  const hosts = [];
+  let cur = null, indent = null;
+  for (const line of String(yml).replace(/\r\n?/g, "\n").split("\n")) {
+    if (!line.trim() || line.trim().startsWith("#")) continue;
+    const host = line.match(/^([^\s:#][^:]*):\s*$/);
+    if (host) { cur = { host: host[1].trim(), user: "" }; hosts.push(cur); indent = null; continue; }
+    if (!cur) continue;
+    const ind = line.match(/^[ \t]*/)[0].length;
+    if (indent === null) indent = ind;
+    if (ind !== indent) continue;
+    const m = line.match(/^[ \t]*user:[ \t]*(.*?)[ \t]*$/);
+    if (m) cur.user = m[1].replace(/^["']|["']$/g, "");
+  }
+  return (hosts.find((h) => h.host === "github.com" && h.user) || hosts.find((h) => h.user) || {}).user || "";
 }
 
 // ---------- SessionStart ----------
@@ -283,13 +312,15 @@ ${who ? `- The user: ${who}. Code by this author (git log, blame, a PR) is their
 
   if (r.bilingual) {
     parts.push(`# The other language
-Write only the open language. When a reply explains something (not for one-line confirmations), end it with this exact line:
+Write only the open language. When a reply explains something (not a one-line confirmation or progress note), end it with this exact line:
 ${r.hint}
 If the user then types "${r.otherKey}", repeat your previous explanation in ${r.other.label}: same content, same length, no new work and no tool calls.`);
   }
 
   parts.push(`# Language guide: ${r.open.label}\n${guideOf(r.openLang, r.openScript)}`);
-  parts.push(`# Roles\n${r.roles.map((x) => `## ${x.meta.label || x.id}\n${x.body}`).join("\n\n")}`);
+  // The first role in full; the others only need what they care about and check.
+  const roleText = (x, i) => (i === 0 ? x.body : x.body.split("\n").filter((l) => /^(Cares about|Technical part):/.test(l)).join("\n"));
+  parts.push(`# Roles\n${r.roles.map((x, i) => `## ${x.meta.label || x.id}\n${roleText(x, i)}`).join("\n\n")}`);
 
   const glossary = readText(r.paths.glossary);
   if (glossary) {
@@ -392,10 +423,13 @@ function prompt(input) {
   }
 
   if (isOff(r, id)) return;
+  if (!r.bilingual && (cmd === "en" || cmd === "tr")) {
+    return block("🦜 Replies are already in English. Run /shoga-speaks:setup to add your own language.");
+  }
 
   let ctx;
   // "huh" is the one to type: a "?" in an empty prompt opens Claude Code's shortcut help.
-  if (cmd === "??" || cmd === "huh" || cmd === "huh?" || cmd === "shoga ??") {
+  if (/^(huh\?*|\?{2,}|shoga \?\?)$/.test(cmd)) {
     if (prof.level > -2) { prof.level -= 1; saveProfile(prof); }
     ctx = `Shoga-Speaks: the user did not understand your previous reply. Explain the same thing again, simpler: shorter sentences, no jargon, one everyday example. Same language (${r.open.label}) and layout. No new work, no tool calls. From now on: ${LEVELS[String(prof.level)] || "use simple words"}`;
   } else if (cmd === "tech" || cmd === "story") {
@@ -406,7 +440,7 @@ function prompt(input) {
     ctx = `Shoga-Speaks: the user typed "${raw}". Repeat your previous explanation in ${target}. Same content and length, simple words, no new work, no tool calls, no hint line at the end.`;
   } else {
     const lang = r.cliEnglish ? "simple English" : `${r.mine.label} (${r.lang.id}, ${r.script} script)`;
-    ctx = `Shoga-Speaks reminder: reply in ${lang}; write for ${primaryRole(r)}${extraRoles(r) ? ` (${extraRoles(r)}: one line each at most)` : ""}; length ${s.length || "short"}. Point first, one idea per line, simple everyday words. Code, paths, commands and errors stay as-is.${r.hint ? ` If the reply explains something, end with: ${r.hint}` : ""}`;
+    ctx = `Shoga-Speaks reminder: reply in ${lang}; write for ${primaryRole(r)}${extraRoles(r) ? ` (${extraRoles(r)}: one line each at most)` : ""}; length ${s.length || "short"}. Point first, one idea per line, simple everyday words. Code, paths, commands and errors stay as-is.${r.hint ? ` If the reply explains something (not a one-line progress note), end with: ${r.hint}` : ""}`;
     ctx += layout(r, id);
     if (state.last_issues) ctx += ` Your last reply ${state.last_issues}. Avoid that.`;
   }
@@ -488,7 +522,7 @@ function toolFailure(input) {
   const r = resolve(input.cwd);
   if (r.s.explain_failures === false || isOff(r, input.session_id)) return;
   const command = String(input.tool_input?.command || "");
-  if (!FAILURE_WORTHY.test(command)) return;
+  if (!failureWorthy(command)) return;
   emit({ hookSpecificOutput: { hookEventName: "PostToolUseFailure", additionalContext:
     `Shoga-Speaks: \`${command.slice(0, 200)}\` failed. When you next write to the user, start with one or two plain lines for a ${primaryRole(r)}, in ${r.open.label}: what failed and what it means for them. Then continue as normal.` } });
 }

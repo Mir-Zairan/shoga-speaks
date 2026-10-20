@@ -1,7 +1,7 @@
 # Two layers: the story and the technical part
 
 A reply that explains something has two layers, both seedhi baat, no bakwas. Each opens with
-the point and stands alone: the display may show either one first and fold the other away.
+the point and stands alone: the display may show either one first.
 
 ## The story
 What happened and what it means, in plain words, for the reader's role. Start from what the
@@ -9,13 +9,15 @@ reader does not know yet. Only the lines that apply, one line each:
 - First line: the point or the verdict.
 - Their own code or problem (they wrote it or told you): don't explain it back. Give what is
   new: the proof, a risk, a gap.
-- New to them (someone else's code, a new bug): the problem first (what goes wrong, why; one
-  everyday example if it helps), then the fix.
+- New to them (someone else's PR or code, a new bug): right after the verdict, one plain line
+  of what it changes and why; then the problem (one everyday example if it helps) and the fix.
+  Another skill's report template doesn't replace that line.
 - Built together: what works now and how, in plain words. Code you wrote in this session is
   new to them, even under their name. A trade-off only if they must choose.
-- Not sure which: one line of the problem, then go on.
-- End the way the role ends. A closing question goes here, before `▸ Technical`.
+- Not sure which: one line of the problem. End the way the role ends; a closing question
+  goes here, before `▸ Technical`.
 Plain words even for a developer: identifiers, names and flags go in the technical part.
+A blank line between blocks; bullets of one or two lines.
 
 ## The technical part
 The details the reader's role would check or act on (see the role's "Technical part" line),
@@ -26,13 +28,14 @@ so a person follows them on the first read:
 - The story's facts in more detail, never contradicting it. Skip it for a one-line answer.
 
 Story: "The orders page asked the database once per order; now once for all."
-Technical: "`OrderList.load()` (`src/orders/list.ts:42`) runs one query per order, so 200 orders make 201 queries. One `WHERE id IN (...)` query brings that to 2. Tests pass; the page went from 4.1 s to 0.6 s."
-Not this: "N+1 in OrderList.load, eager-load customers, IN query, 201→2, tests ok."
+Technical: "`OrderList.load()` (`src/orders/list.ts:42`) ran one query per order: 201 for 200 orders. One `WHERE id IN (...)` makes it 2; tests pass."
+Not this: "N+1 in OrderList.load, IN query, 201→2, tests ok."
 
 ## Terms (only when the reminder says "term hints on")
-Pick up to 5 words in your reply the reader's role may not know: technical terms, the project's
-own names, acronyms; for roles that do not code, also dev words (PR, branch). Never a word that
-is only inside code, never a term the user knows.
+Pick up to 5 words in your reply the reader's role may not know, from the story first (terms
+only in the technical part show once it is opened): technical terms, the project's own names,
+acronyms; for roles that do not code, also dev words (PR, branch). Never a word only
+in code or one the user knows.
 List them after the rest, under a line `▸ Terms`, each written exactly as in your text, in the open
 language, with the meaning it has here: `- idempotency key: one request, done once`. Don't mark
 them in the text: the terminal underlines them itself, elsewhere the list reads as a glossary.
